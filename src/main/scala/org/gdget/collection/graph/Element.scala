@@ -20,58 +20,24 @@ package org.gdget.collection.graph
 import language.higherKinds
 import scalaz.Equal
 
-trait Element[A[_], B] {
-
-  implicit def valueEqual: Equal[B] = Equal.equalA[B]
-
-  def get(elem: A[B]): B
-}
-
-object Element {
-
-  implicit class ElementOps[A[_], B](elem: A[B])(implicit ev: Element[A, B]) {
-
-    def get = ev.get(elem)
-  }
-}
-
-trait ExternalElement[A[_], B] extends Element[A, B] {
-
-  type Inner[G]
-
-  def toInner[G](elem: A[B], graph: G)(implicit ev: InternalElement[Inner[G], B, G], gEv: GraphLike[G, _, _]): Inner[G]
-}
-
-object ExternalElement {
-
-  implicit class ExternalelementOps[A[_], B](elem: A[B])(implicit ev: ExternalElement[A, B]) {
-
-    def toInner[G](graph: G)(implicit iEv: InternalElement[ev.Inner[G], B, G], gEv: GraphLike[G, _, _]) =
-      ev.toInner(elem, graph)
-  }
-}
-
 /** Utility Type class common to both vertices and edges. Elements which implement this type class are stored within a
   * Graph object.
   *
   * @author hugofirth
+  * @since 0.1
   */
-trait InternalElement[A[_], B, G] extends Element[A, B] {
+trait Element[A] {
 
-  type Outer
+  type G <: AnyRef
 
-  def graph(elem: A[B])(implicit gEv: GraphLike[G, _, _]): G
-
-  def toOuter(elem: A[B])(implicit ev: ExternalElement[Outer, B]): Outer
+  //TODO: Modify this? Should it really always use universal equality in the background?
+  implicit def elemEqual: Equal[A] = Equal.equalA[A]
+  implicit def graphG: Graph[G]
 }
 
+object Element {
 
-object InternalElement {
+  implicit class ElementOps[A](elem: A)(implicit ev: Element[A]) {
 
-  implicit class InternalElementOps[A[_], B, G](elem: A)(implicit ev: InternalElement[A, B, G]) {
-
-    def toOuter(implicit eEv: ExternalElement[ev.Outer, B]) = ev.toOuter(elem)
-
-    def graph(implicit gEv: GraphLike[G, _, _]): G = ev.graph(elem)
   }
 }

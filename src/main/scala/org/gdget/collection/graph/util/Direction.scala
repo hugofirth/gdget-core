@@ -30,5 +30,4 @@ sealed trait Direction {
 object Direction {
   case object Out extends Direction { val opposite = In }
   case object In extends Direction { val opposite = Out }
-  case object Both extends Direction { val opposite = Both }
 }

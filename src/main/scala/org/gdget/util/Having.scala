@@ -19,25 +19,41 @@ package org.gdget.util
 
 import language.higherKinds
 
-/** This utility type is what is known as an existential quantification. It means "there exists an F[A] for A".
-  *
-  *  Credit to @tpolecat (Rob Norris) and his source (@nuttycom) for
-  *  [[https://tpolecat.github.io/2015/04/29/f-bounds.html this article]], which is where I learned about the technique.
+import scalaz._
+import Scalaz._
+
+/** Description of Class
   *
   * @author hugofirth
-  * @since 0.1
   */
-trait Exists[F[_]] {
-  type A
+trait Having[A0, TC[_]] {
+  type A = A0
+
+  implicit def tc: TC[A]
+
   val a: A
-  val fa: F[A]
   override def toString = a.toString
 }
 
-object Exists {
-  def apply[F[_], A0](a0: A0)(implicit ev: F[A0]): Exists[F] = new Exists[F] {
-    type A = A0
-    val a = a0
-    val fa = ev
+case class Has[A0, TC[_]](a: A0, tc: TC[A0]) extends Having[A0, TC]
+
+object Having {
+  def unapply[A, TC[_]](elem: Having[A, TC]): Option[(elem.A, TC[elem.A])] = Option((elem.a, elem.tc))
+
+  implicit def havingEqual[TC[_] , A](implicit ev: Equal[A]): Equal[Having[A, TC]] = new HavingEqual[A, TC] {
+    override implicit def a: Equal[A] = ev
   }
 }
+
+private trait HavingEqual[A, TC[_]] extends Equal[Having[A, TC]] {
+  implicit def a: Equal[A]
+
+  final override def equal(h1: Having[A, TC], h2: Having[A, TC]) = a.equal(h1.a, h2.a)
+
+  override val equalIsNatural = a.equalIsNatural
+}
+
+
+
+
+

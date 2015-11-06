@@ -24,5 +24,7 @@ import language.higherKinds
   * @author hugofirth
   */
 package object util {
-  type ∃[F[_]] = Exists[F]
+//  type ∃[A[_]] = Exists0[A]
+//  type ∃?[A[_[_]]] = Exists1[A]
+//  type ∃??[A[_[_, _]]] = Exists2[A]
 }
