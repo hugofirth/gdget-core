@@ -8,5 +8,6 @@ resolvers += Resolver.sonatypeRepo("releases")
 
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.4" % "test"
-libraryDependencies += "org.scalaz" %% "scalaz-core" % "7.1.3"
-libraryDependencies += "org.typelevel" %% "machinist" % "0.4.1"
+libraryDependencies += "org.typelevel" %% "cats" % "0.4.0"
+libraryDependencies += "com.chuusai" %% "shapeless" % "2.2.4"
+libraryDependencies += "org.scala-lang" % "scala-reflect" % "2.11.7"

@@ -17,18 +17,28 @@
   */
 package org.gdget
 
-import org.gdget.labelled.Label
-
 import language.higherKinds
 
-/** Package object for org.gdget.util. Defines type aliases and other supporting information
+/** Utility Type class common to both vertices and edges. Elements which implement this type class are stored within a
+  * Graph object.
   *
   * @author hugofirth
+  * @since 0.1
   */
-package object util {
+trait Element[A] {
 
-  object hasLabel {
-    def unapply[A](having: Having[_, _])(implicit label: Label[A]): Boolean = having.label == label.name
-  }
+  /** Each Element instance must define a G supertype which has an instance of Graph */
+//  type G[_, _]
+//  implicit def graphG: Graph[G, _, _]
+//
+//  def graph(elem: A): G
 
+}
+
+object Element {
+
+//  implicit class ElementOps[A: Element](elem: A) {
+//    private val eEv = implicitly[Element[A]]
+//    def graph = eEv.graph(elem)
+//  }
 }

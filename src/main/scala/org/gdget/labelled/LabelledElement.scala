@@ -1,6 +1,6 @@
 /** gdget-core
   *
-  * Copyright (c) 2015 Hugo Firth
+  * Copyright (c) 2016 Hugo Firth
   * Email: <me@hugofirth.com/>
   *
   * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,20 +15,12 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-package org.gdget
+package org.gdget.labelled
 
-import org.gdget.labelled.Label
-
-import language.higherKinds
-
-/** Package object for org.gdget.util. Defines type aliases and other supporting information
+/** Description of Class
   *
-  * @author hugofirth
+  * @author hugofirt
   */
-package object util {
-
-  object hasLabel {
-    def unapply[A](having: Having[_, _])(implicit label: Label[A]): Boolean = having.label == label.name
-  }
+trait LabelledElement {
 
 }

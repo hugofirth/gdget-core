@@ -1,6 +1,6 @@
 /** gdget-core
   *
-  * Copyright (c) 2015 Hugo Firth
+  * Copyright (c) 2016 Hugo Firth
   * Email: <me@hugofirth.com/>
   *
   * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,18 +17,13 @@
   */
 package org.gdget
 
-import org.gdget.labelled.Label
-
-import language.higherKinds
-
-/** Package object for org.gdget.util. Defines type aliases and other supporting information
+/** Description of Class
+  *
+  * TODO: Implement an Adj typeclass which handles neighbours() and degree()
+  * Maybe consider an AdjD typeclass as well for directed ?
   *
   * @author hugofirth
   */
-package object util {
-
-  object hasLabel {
-    def unapply[A](having: Having[_, _])(implicit label: Label[A]): Boolean = having.label == label.name
-  }
+trait Adjacent {
 
 }

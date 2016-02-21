@@ -15,14 +15,7 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-package org.gdget.collection.graph
-
-import language.higherKinds
-
-import org.gdget.util.UnionTypes._
-
-import scalaz._
-import Scalaz._
+package org.gdget
 
 
 /** The base TypeClass for defining behaviour for all edges stored in a graph.
@@ -34,26 +27,29 @@ import Scalaz._
   * @author hugofirth
   * @since 0.1
   */
-trait Edge[E[_, _]] extends Element[E[_, _]] {
+trait Edge[E] {
 
-  type V[L, R] = t[L]#t[R]
+  /** Each Edge instance must define an V type member which has an instance of Vertex */
+  type V
+  implicit def vertexV: Vertex[V]
 
-  def vertices[L, R](e: E[L, R])(implicit lEr: Vertex[L], rEr: Vertex[R]): (L, R)
+  def vertices(e: E): (V, V)
 
-  def other[L, R, A](e: E[L, R], v: A)(implicit lEr: Vertex[L], rEr: Vertex[R], ev: A In V[L, R]): Option[L\/R]
+  def other(e: E, v: V): Option[V]
 
-  def left[L, R](e: E[L, R])(implicit lEr: Vertex[L], rEr: Vertex[R]): L
+  def left(e: E): V
 
-  def right[L, R](e: E[L, R])(implicit lEr: Vertex[L], rEr: Vertex[R]): R
+  def right(e: E): V
 }
 
 object Edge {
 
-  implicit class EdgeOps[E[_, _], L, R](e: E[L, R])(implicit eEv: Edge[E], lEr: Vertex[L], rEr: Vertex[R]) {
+  implicit class EdgeOps[E: Edge](e: E) {
+    val eEv = implicitly[Edge[E]]
     def vertices = eEv.vertices(e)
     def left = eEv.left(e)
     def right = eEv.right(e)
-    def other[A](v: A)(implicit ev: A In Edge[E]#V[L, R]) = eEv.other(e, v)
+    def other(v: eEv.V) = eEv.other(e, v)
   }
 
 }

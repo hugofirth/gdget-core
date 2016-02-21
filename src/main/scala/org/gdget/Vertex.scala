@@ -15,12 +15,12 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-package org.gdget.collection.graph
+package org.gdget
 
-import language.{higherKinds, existentials}
+import org.gdget.util.Having
 
-import scalaz._
-import Scalaz._
+import scala.language.{existentials, higherKinds}
+import scalaz.Scalaz._
 
 /** The base TypeClass for defining behaviour for a vertex
   *
@@ -29,26 +29,31 @@ import Scalaz._
   * @author hugofirth
   * @since 0.1
   */
-trait Vertex[V] extends Element[V] { self =>
+trait Vertex[V] { self =>
+  /** Each Vertex instance must define an E supertype which has an instance of Edge */
+  type E
+  implicit def edgeE: Edge[E]
 
-  def edges(v: V): Set[(E[_, _], Edge[E]) forSome { type E[_,_] }]
-  def plusEdge[E[_, _]](v: V, e: E[_, _])(implicit ev: Edge[E]): V
-  def minusEdge[E[_, _]](v: V, e: E[_, _])(implicit ev: Edge[E]): V
-  def neighbours(v: V): Set[(V, Vertex[V]) forSome { type V }]
+  def edges(v: V): Set[E]
+  def plusEdge(v: V, e: E): V
+  def minusEdge(v: V, e: E): V
+  def plusEdges(v: V, e: E*): V
+  def minusEdges(v: V, e: E*): V
+  def neighbours(v: V): Set[V]
   def degree(v: V): Int = self.edges(v).size
-  def isContainedIn(v: V, other: V): Boolean = (v === other) && self.edges(v).subsetOf(self.edges(other))
-
 }
 
 object Vertex {
 
-  implicit class VertexOps[V](v: V)(implicit vEv: Vertex[V]) {
+  implicit class VertexOps[V: Vertex](v: V) {
+    val vEv = implicitly[Vertex[V]]
     def edges = vEv.edges(v)
-    def plusEdge[E[_, _]](e: E[_, _])(implicit ev: Edge[E]) = vEv.plusEdge(v, e)
-    def minusEdge[E[_, _]](e: E[_, _])(implicit ev: Edge[E]) = vEv.minusEdge(v, e)
+    def plusEdge(e: vEv.E) = vEv.plusEdge(v, e)
+    def minusEdge(e: vEv.E) = vEv.minusEdge(v, e)
+    def plusEdges(e: vEv.E*) = vEv.plusEdges(v, e: _*)
+    def minusEdge(e: vEv.E*) = vEv.minusEdges(v, e: _*)
     def neighbours = vEv.neighbours(v)
     def degree = vEv.degree(v)
-    def isContainedIn(other: V) = vEv.isContainedIn(v, other)
   }
 }
 

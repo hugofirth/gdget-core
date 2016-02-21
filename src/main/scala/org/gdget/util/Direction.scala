@@ -15,20 +15,21 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-package org.gdget
+package org.gdget.util
 
-import org.gdget.labelled.Label
+import org.gdget.Vertex
 
-import language.higherKinds
-
-/** Package object for org.gdget.util. Defines type aliases and other supporting information
+/** This is a convenience trait used to represent the direction of a [[org.gdget.collection.graph.DirectedEdge]], given
+  * an incident [[Vertex]].
   *
   * @author hugofirth
+  * @since 0.1
   */
-package object util {
+sealed trait Direction {
+  def opposite: Direction
+}
 
-  object hasLabel {
-    def unapply[A](having: Having[_, _])(implicit label: Label[A]): Boolean = having.label == label.name
-  }
-
+object Direction {
+  case object Out extends Direction { val opposite = In }
+  case object In extends Direction { val opposite = Out }
 }

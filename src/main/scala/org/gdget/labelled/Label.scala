@@ -15,24 +15,24 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-package org.gdget.collection.graph
+package org.gdget.labelled
 
-import language.implicitConversions
+import scala.language.implicitConversions
 
 
-/** The Label utility trait, implemented by any Type to be contained by vertices or edges
+/** The Label utility trait, implemented by any Type to behave like a Vertex or an Edge
   *
   * @tparam A
   * @author hugofirth
   * @since 0.1
   */
-trait Label[A] { self =>
+trait Label[+A] { self =>
 
-  def name: String
-  override def toString = self.name
+  def name: Symbol
+  override def toString = self.name.toString
 }
 
-/** Pi type test for Labels
+/** Pi type for Labels
   *
   * TODO: Finish documenting here
   *
