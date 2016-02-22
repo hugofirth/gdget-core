@@ -17,10 +17,7 @@
   */
 package org.gdget
 
-import org.gdget.util.Having
-
 import scala.language.{existentials, higherKinds}
-import scalaz.Scalaz._
 
 /** The base TypeClass for defining behaviour for a vertex
   *

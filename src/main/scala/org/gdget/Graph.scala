@@ -26,14 +26,16 @@ import scala.language.{existentials, higherKinds, reflectiveCalls}
   * @see [[Vertex]]
   * @see [[Edge]]
   * @tparam G The type implementing graph like functionality
+  * @tparam V The vertex type contained in a graph of type G
+  * @tparam E the edge type connecting vertices of type V, in a graph of type G
   * @author hugofirth
   * @since 0.1
   */
 trait Graph[G[_, _], V, E] { self =>
 
   /** Make sure that V, E have instances of appropriate typeclasses */
-  implicit def vertexV: Vertex[V]
-  implicit def edgeE: Edge[E]
+  implicit def V: Vertex[V]
+  implicit def E: Edge[E]
 
   def vertices(g: G[V, E]): Iterable[V]
   def edges(g: G[V, E]): Iterable[E]
@@ -67,22 +69,22 @@ trait Graph[G[_, _], V, E] { self =>
 
   def minusVertex(g: G[V, E], v: V): G[V, E]
 
-  def plusVertices(g: G[V, E], v: V*): G[V, E]
+  def plusVertices(g: G[V, E], vs: V*): G[V, E] = vs.foldLeft(g)((graph, v) => plusVertex(graph, v))
 
-  def minusVertices(g: G[V, E], v: V*): G[V, E]
+  def minusVertices(g: G[V, E], vs: V*): G[V, E] = vs.foldLeft(g)((graph, v) => minusVertex(graph, v))
 
   def plusEdge(g: G[V, E], e: E): G[V, E]
 
   def minusEdge(g: G[V, E], e: E): G[V, E]
 
-  def plusEdges(g: G[V, E], e: E*): G[V, E]
+  def plusEdges(g: G[V, E], es: E*): G[V, E] = es.foldLeft(g)((graph, e) => plusEdge(graph, e))
 
-  def minusEdges(g: G[V, E], e: E*): G[V, E]
+  def minusEdges(g: G[V, E], es: E*): G[V, E] = es.foldLeft(g)((graph, e) => minusEdge(graph, e))
 }
 
 object Graph {
 
-  implicit class GraphOps[G[_, _], V: Vertex, E: Edge](g: G[V, E])(implicit gEv: Graph[G[V, E], V, E]) {
+  implicit class GraphOps[G[_, _], V: Vertex, E: Edge](g: G[V, E])(implicit gEv: Graph[G, V, E]) {
     def vertices = gEv.vertices(g)
     def edges = gEv.edges(g)
     def order = gEv.order(g)

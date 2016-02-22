@@ -25,10 +25,4 @@ import language.higherKinds
   *
   * @author hugofirth
   */
-package object util {
-
-  object hasLabel {
-    def unapply[A](having: Having[_, _])(implicit label: Label[A]): Boolean = having.label == label.name
-  }
-
-}
+package object util {}
