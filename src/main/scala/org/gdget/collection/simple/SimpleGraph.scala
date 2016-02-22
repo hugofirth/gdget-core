@@ -123,23 +123,23 @@ sealed trait SimpleGraphInstances { self =>
     }
 }
 
-private trait SimpleGraphGraph[V, E] extends Graph[SimpleGraph, V, E] {
-  override implicit def V: Vertex[V]
-  override implicit def E: Edge[E]
+private trait SimpleGraphGraph[V0, E0] extends Graph[SimpleGraph, V0, E0] {
+  override implicit def V: Vertex[V0] {type E = E0}
+  override implicit def E: Edge[E0] {type V = V0}
 
-  override def vertices(g: SimpleGraph[V, E]): Iterable[V] = g.vertices
+  override def vertices(g: SimpleGraph[V0, E0]): Iterable[V0] = g.vertices
 
-  override def edges(g: SimpleGraph[V, E]): Iterable[E] = g.edges
+  override def edges(g: SimpleGraph[V0, E0]): Iterable[E0] = g.edges
 
-  override def plusVertex(g: SimpleGraph[V, E], v: V): SimpleGraph[V, E] = GCons(g.adj + (v -> Set.empty[E]))
+  override def plusVertex(g: SimpleGraph[V0, E0], v: V0): SimpleGraph[V0, E0] = GCons(g.adj + (v -> Set.empty[E0]))
 
-  override def minusVertex(g: SimpleGraph[V, E], v: V): SimpleGraph[V, E] = GCons(g.adj - v)
+  override def minusVertex(g: SimpleGraph[V0, E0], v: V0): SimpleGraph[V0, E0] = GCons(g.adj - v)
 
-  override def plusEdge(g: SimpleGraph[V, E], e: E): SimpleGraph[V, E] = g.plusEdge(e)
+  override def plusEdge(g: SimpleGraph[V0, E0], e: E0): SimpleGraph[V0, E0] = g plusEdge e
 
-  override def minusEdge(g: SimpleGraph[V, E], e: E): SimpleGraph[V, E] = g minusEdge e
+  override def minusEdge(g: SimpleGraph[V0, E0], e: E0): SimpleGraph[V0, E0] = g minusEdge e
 
-  override def union(lg: SimpleGraph[V, E], rg: SimpleGraph[V, E]): SimpleGraph[V, E] = ???
+  override def union(lg: SimpleGraph[V0, E0], rg: SimpleGraph[V0, E0]): SimpleGraph[V0, E0] = ???
 
-  override def intersection(lg: SimpleGraph[V, E], rg: SimpleGraph[V, E]): SimpleGraph[V, E] = ???
+  override def intersection(lg: SimpleGraph[V0, E0], rg: SimpleGraph[V0, E0]): SimpleGraph[V0, E0] = ???
 }
