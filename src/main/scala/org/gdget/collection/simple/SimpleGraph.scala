@@ -18,7 +18,6 @@
 package org.gdget.collection.simple
 
 import algebra.CommutativeMonoid
-import org.gdget.collection._
 import org.gdget.{Edge, Graph, Vertex}
 
 /** SimpleGraph is an unlabelled, undirected graph datastructure. It provides instances of the 
@@ -28,20 +27,21 @@ import org.gdget.{Edge, Graph, Vertex}
   * immutable). SimpleGraph is designed to be easy to understand, providing a basis for comparison between various other 
   * Graph implementations, and a development sandbox.
   * 
-  * TODO: Remove scalaz dependencies...
-  *
   * @see [[SimpleEdge]]
   * @author hugofirth
   */
-sealed abstract class SimpleGraph[V0, E0] {
+sealed abstract class SimpleGraph[V0] {
 
-  private[simple] val adj: AdjacencyList[V0, E0]
+  private[simple] val adj: AdjacencyList[V0]
   
-  def vertices = adj.keys
+  def vertices = adj.keys.iterator
 
-  def edges = adj.values.flatten
+  def edges = for {
+    (v, neighbours) <- adj.toIterator
+    n <- neighbours
+  } yield SimpleEdge(v, n)
 
-  def plusVertex(v: V0) = GCons(adj + (v -> Set.empty[E0]))
+  def plusVertex(v: V0) = GCons(adj + (v -> Set.empty[V0]))
 
   def minusVertex(v: V0) = GCons(adj - v)
 
@@ -49,48 +49,48 @@ sealed abstract class SimpleGraph[V0, E0] {
 
   def minusVertices(vs: V0*) = vs.foldLeft(this)((g, v) => g minusVertex v)
 
-  def plusEdge(e: E0)(implicit ev: Edge[E0] {type V = V0}) = {
+  def plusEdge(e: SimpleEdge[V0])(implicit ev: Edge[SimpleEdge[V0]] {type V = V0}) = {
     val dAdj = adj.get(ev.left(e)).fold(adj + (ev.left(e) -> Set(e)))(edges => adj updated(ev.left(e), edges + e))
     val ddAdj = dAdj.get(ev.right(e)).fold(dAdj + (ev.right(e) -> Set(e)))(edges => adj updated(ev.right(e), edges + e))
     GCons(ddAdj)
   }
 
-  def minusEdge(e: E0)(implicit ev: Edge[E0] {type V = V0}) = {
+  def minusEdge(e: SimpleEdge[V0])(implicit ev: Edge[SimpleEdge[V0]] {type V = V0}) = {
     val dAdj = adj.get(ev.left(e)).fold(adj)(edges => adj updated(ev.left(e), edges - e))
     val ddAdj = dAdj.get(ev.right(e)).fold(dAdj)(edges => dAdj updated(ev.left(e), edges - e))
     GCons(ddAdj)
   }
 
-  def plusEdges(es: E0*)(implicit ev: Edge[E0] {type V = V0}) = es.foldLeft(this)((g, e) => g plusEdge e)
+  def plusEdges(es: SimpleEdge[V0]*)(implicit ev: Edge[SimpleEdge[V0]] {type V = V0}) = es.foldLeft(this)((g, e) => g plusEdge e)
 
-  def minusEdges(es: E0*)(implicit ev: Edge[E0] {type V = V0}) = es.foldLeft(this)((g, e) => g minusEdge e)
+  def minusEdges(es: SimpleEdge[V0]*)(implicit ev: Edge[SimpleEdge[V0]] {type V = V0}) = es.foldLeft(this)((g, e) => g minusEdge e)
 
 }
 
-private[simple] final case class GCons[V0, E0](adj: AdjacencyList[V0, E0]) extends SimpleGraph[V0, E0]
+private[simple] final case class GCons[V0](adj: AdjacencyList[V0]) extends SimpleGraph[V0]
 
-private[simple] case object NullGraph extends SimpleGraph[Nothing, Nothing] {
+private[simple] case object NullGraph extends SimpleGraph[Nothing] {
     val size = 0
     val order = 0
 
-    override private[simple] val adj: AdjacencyList[Nothing, Nothing] = Map.empty[Nothing, Set[Nothing]]
+    override private[simple] val adj: AdjacencyList[Nothing] = Map.empty[Nothing, Set[Nothing]]
 
-    def unapply[V, E](g: SimpleGraph[V, E]): Boolean = g eq this
+    def unapply[V](g: SimpleGraph[V]): Boolean = g eq this
 
-    def apply[V, E](): SimpleGraph[V, E] = this.asInstanceOf[SimpleGraph[V, E]]
+    def apply[V](): SimpleGraph[V] = this.asInstanceOf[SimpleGraph[V]]
 
 
 }
 
 //TODO: Switch to using SimpleEdge in SimpleGraph
 //TODO: Look up Aux types to deal with G[_, _] expectation in Graph TC
-final case class SimpleEdge[V0](left: V0, right: V0) { type V = V0 }
+final case class SimpleEdge[V0](left: V0, right: V0)
 
 object SimpleGraph extends SimpleGraphInstances {
 
   //TODO: Redefine AdjacencyList to be unary in its type parameter
 
-  def empty[V, E]: SimpleGraph[V, E] = NullGraph[V, E]()
+  def empty[V, E]: SimpleGraph[V] = NullGraph[V]()
 
   //TODO: Create conversion methods fromList, fromSet etc.... Maybe extract to a GraphCompanion?
 
@@ -114,12 +114,12 @@ sealed trait SimpleGraphInstances { self =>
     override implicit def E: Edge[E0] = eEv
   }
 
-  implicit def simpleGraphMonoid[V: Vertex, E: Edge]: CommutativeMonoid[SimpleGraph[V, E]] =
-    new CommutativeMonoid[SimpleGraph[V, E]] {
-      override def empty: SimpleGraph[V, E] = NullGraph[V, E]()
+  implicit def simpleGraphMonoid[V: Vertex, E: Edge]: CommutativeMonoid[SimpleGraph[V]] =
+    new CommutativeMonoid[SimpleGraph[V]] {
+      override def empty: SimpleGraph[V] = NullGraph[V]()
 
       //TODO: Implement combine using Union
-      override def combine(x: SimpleGraph[V, E], y: SimpleGraph[V, E]): SimpleGraph[V, E] = ???
+      override def combine(x: SimpleGraph[V], y: SimpleGraph[V]): SimpleGraph[V] = ???
     }
 }
 

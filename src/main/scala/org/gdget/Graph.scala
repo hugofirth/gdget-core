@@ -37,8 +37,8 @@ trait Graph[G[_, _], V, E] { self =>
   implicit def V: Vertex[V]
   implicit def E: Edge[E]
 
-  def vertices(g: G[V, E]): Iterable[V]
-  def edges(g: G[V, E]): Iterable[E]
+  def vertices(g: G[V, E]): Iterator[V]
+  def edges(g: G[V, E]): Iterator[E]
 
 
   /** The order of the graph. This is equal to the number of vertices stored.

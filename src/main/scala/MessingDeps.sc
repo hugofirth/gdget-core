@@ -15,19 +15,10 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-import language.higherKinds
 
-case class Foo[+A](a: A)
+val a = Map(1 -> Set("foo", "bar", "baz"), 2 -> Set("fizz", "buzz", "bang"))
 
-class Bar(b: Int) {
-  type T
-}
-
-type Aux[A, B] = B {type T = A}
-
-case class Baz[A, B](c: B)
-
-val a: Foo[Int] = Foo(2)
-val b = new Bar(4) { type T = Int }
-Baz[Int, Bar](b)
-
+val b = for {
+  (v, ns) <- a.toIterator
+  n <- ns
+} yield (v, n)
