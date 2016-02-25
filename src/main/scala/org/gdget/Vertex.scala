@@ -27,7 +27,7 @@ import scala.language.{existentials, higherKinds}
   * @since 0.1
   */
 trait Vertex[V] { self =>
-  /** Each Vertex instance must define an E supertype which has an instance of Edge */
+  /** Each Vertex instance must define an E type member which has an instance of Edge */
   type E
   implicit def edgeE: Edge[E]
 
@@ -41,6 +41,8 @@ trait Vertex[V] { self =>
 }
 
 object Vertex {
+
+  type Aux[V0, E0] = Vertex[V0] { type E = E0 }
 
   implicit class VertexOps[V: Vertex](v: V) {
     val vEv = implicitly[Vertex[V]]

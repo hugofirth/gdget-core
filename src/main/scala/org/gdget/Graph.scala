@@ -47,7 +47,7 @@ trait Graph[G[_, _], V, E] { self =>
     *
     * @return The number of vertices in the graph
     */
-  def order(g: G[V, E]): Int = self.vertices(g).size
+  def order(g: G[V, E]): Long = self.vertices(g).size
 
   /** The size of the graph. This is equal to the number of edges stored.
     *
@@ -55,11 +55,10 @@ trait Graph[G[_, _], V, E] { self =>
     *
     * @return The number of edges in the graph
     */
-  def size(g: G[V, E]): Int = self.edges(g).size
+  def size(g: G[V, E]): Long = self.edges(g).size
 
-  def union(lg: G[V, E], rg: G[V, E]): G[V, E]
-
-  def intersection(lg: G[V, E], rg: G[V, E]): G[V, E]
+  //TODO: Implement Union by requiring G: Monoid and using the combine method
+  def union(lg: G[V, E], rg: G[V, E]): G[V, E] = ???
 
   def findVertex(g: G[V, E])(f: (V) => Boolean): Option[V] = self.vertices(g) find f
 
@@ -84,13 +83,14 @@ trait Graph[G[_, _], V, E] { self =>
 
 object Graph {
 
+  //TODO: Investigate Machinist for cheap (unboxed) typeclass ops.
+
   implicit class GraphOps[G[_, _], V: Vertex, E: Edge](g: G[V, E])(implicit gEv: Graph[G, V, E]) {
     def vertices = gEv.vertices(g)
     def edges = gEv.edges(g)
     def order = gEv.order(g)
     def size = gEv.size(g)
     def union(that: G[V, E]) = gEv.union(g, that)
-    def intersection(that: G[V, E]) = gEv.intersection(g, that)
     def findVertex(f: (V) => Boolean) = gEv.findVertex(g)(f)
     def findEdge(f: (E) => Boolean) = gEv.findEdge(g)(f)
     def plusVertex(v: V) = gEv.plusVertex(g, v)

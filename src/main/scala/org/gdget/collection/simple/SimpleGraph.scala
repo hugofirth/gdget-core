@@ -23,51 +23,33 @@ import org.gdget.{Edge, Graph, Vertex}
 /** SimpleGraph is an unlabelled, undirected graph datastructure. It provides instances of the 
   * [[algebra.CommutativeMonoid]] & [[org.gdget.Graph]] typeclasses.
   * 
-  * As its name might suggest, SimpleGraph is neither particularly optimised, or particularly functional (though it is
+  * As its name might suggest, SimpleGraph is neither particularly optimised, or particularly principled (though it is
   * immutable). SimpleGraph is designed to be easy to understand, providing a basis for comparison between various other 
   * Graph implementations, and a development sandbox.
   * 
-  * @see [[SimpleEdge]]
+  * @see [[SimpleVertex]]
   * @author hugofirth
   */
 sealed abstract class SimpleGraph[V0] {
 
-  private[simple] val adj: AdjacencyList[V0]
+  private[simple] def adj: AdjacencyList[V0]
+
+  def size: Long
+  def order: Long
   
   def vertices = adj.keys.iterator
 
   def edges = for {
     (v, neighbours) <- adj.toIterator
     n <- neighbours
-  } yield SimpleEdge(v, n)
-
-  def plusVertex(v: V0) = GCons(adj + (v -> Set.empty[V0]))
-
-  def minusVertex(v: V0) = GCons(adj - v)
-
-  def plusVertices(vs: V0*) = vs.foldLeft(this)((g, v) => g plusVertex v)
-
-  def minusVertices(vs: V0*) = vs.foldLeft(this)((g, v) => g minusVertex v)
-
-  def plusEdge(e: SimpleEdge[V0])(implicit ev: Edge[SimpleEdge[V0]] {type V = V0}) = {
-    val dAdj = adj.get(ev.left(e)).fold(adj + (ev.left(e) -> Set(e)))(edges => adj updated(ev.left(e), edges + e))
-    val ddAdj = dAdj.get(ev.right(e)).fold(dAdj + (ev.right(e) -> Set(e)))(edges => adj updated(ev.right(e), edges + e))
-    GCons(ddAdj)
-  }
-
-  def minusEdge(e: SimpleEdge[V0])(implicit ev: Edge[SimpleEdge[V0]] {type V = V0}) = {
-    val dAdj = adj.get(ev.left(e)).fold(adj)(edges => adj updated(ev.left(e), edges - e))
-    val ddAdj = dAdj.get(ev.right(e)).fold(dAdj)(edges => dAdj updated(ev.left(e), edges - e))
-    GCons(ddAdj)
-  }
-
-  def plusEdges(es: SimpleEdge[V0]*)(implicit ev: Edge[SimpleEdge[V0]] {type V = V0}) = es.foldLeft(this)((g, e) => g plusEdge e)
-
-  def minusEdges(es: SimpleEdge[V0]*)(implicit ev: Edge[SimpleEdge[V0]] {type V = V0}) = es.foldLeft(this)((g, e) => g minusEdge e)
+  } yield (v, n)
 
 }
 
-private[simple] final case class GCons[V0](adj: AdjacencyList[V0]) extends SimpleGraph[V0]
+private[simple] final case class GCons[V0](adj: AdjacencyList[V0]) extends SimpleGraph[V0] {
+  override lazy val size: Long = vertices.size
+  override lazy val order: Long = edges.size
+}
 
 private[simple] case object NullGraph extends SimpleGraph[Nothing] {
     val size = 0
@@ -77,69 +59,92 @@ private[simple] case object NullGraph extends SimpleGraph[Nothing] {
 
     def unapply[V](g: SimpleGraph[V]): Boolean = g eq this
 
-    def apply[V](): SimpleGraph[V] = this.asInstanceOf[SimpleGraph[V]]
-
-
+    def apply[V]: SimpleGraph[V] = this.asInstanceOf[SimpleGraph[V]]
 }
 
-//TODO: Switch to using SimpleEdge in SimpleGraph
-//TODO: Look up Aux types to deal with G[_, _] expectation in Graph TC
-final case class SimpleEdge[V0](left: V0, right: V0)
+/** SimpleVertex is a case class which wraps rows of the Adjacency matrix stored within SimpleGraph. SimpleVertex are
+  * never stored, only existing when the underlying vertex representation objects (V) are being added or removed from a
+  * graph.
+  *
+  * [[SimpleGraphInstances]] provides an instance of the [[org.gdget.Vertex]] typeclass for SimpleVertex.
+  *
+  * @param v The vertex's underlying representation
+  * @param neighbours The set of vertex representations which are connected to v
+  * @tparam V The type of the vertex's underlying representation
+  */
+final case class SimpleVertex[V](v: V, neighbours: Set[V])
 
 object SimpleGraph extends SimpleGraphInstances {
 
-  //TODO: Redefine AdjacencyList to be unary in its type parameter
+  /** Alias allows SimpleGraph to "pretend" to conform to expected graph type-structure G[V,E], though E always equals (V, V) */
+  type G[V, E] = SimpleGraph[V]
 
-  def empty[V, E]: SimpleGraph[V] = NullGraph[V]()
+  //TODO: Look at ScalaGraph for shared companion objects
+  //TODO: Look at Cats and decide which typeclasses all Graphs should provide instances for?
+  //TODO: Provide Edge instance for Tuple2
+  //TODO: Switch to using SimpleVertex - rename SimpleVertexView?
+
+
+  def empty[V]: SimpleGraph[V] = NullGraph[V]
+
+  //TODO: Create final apply method for creating SimpleGraphs w. any implicits fot TC[V] where TC are required typlecasses
 
   //TODO: Create conversion methods fromList, fromSet etc.... Maybe extract to a GraphCompanion?
-
-
-
 }
 
 sealed trait SimpleGraphInstances { self =>
 
-  implicit def simpleGraph[V0, E0](implicit eEv: Edge[E0] {type V = V0},
-                                   vEv: Vertex[V0] {type E = E0}): Graph[SimpleGraph, V0, E0] = new SimpleGraphGraph[V0, E0] {
+  implicit def simpleGraph[V0](implicit eEv: Edge[(V0, V0)] {type V = V0},
+                               vEv: Vertex[V0] {type E = (V0, V0)}): Graph[SimpleGraph.G, V0, (V0, V0)] =
+    new SimpleGraphGraph[V0] {
 
+      override implicit def V: Vertex[V0] = vEv
 
-    //TODO: Use a private trait to "once remove" the implicit params from the implicit defs which removes ambiguity.
-    // See https://github.com/scalaz/scalaz/search?utf8=%E2%9C%93&q=%22implicit+def%22+path%3Acore%2Fsrc%2Fmain%2Fscala%2Fscalaz%2Fstd%2F&type=Code
-
-    //TODO: Move logic to typeclass instance methods rather than treating them as glue (pending best practices check).
-    //TODO: Implement Union and Intersection efficiently.
-    override implicit def V: Vertex[V0] = vEv
-
-    override implicit def E: Edge[E0] = eEv
-  }
+      override implicit def E: Edge[(V0, V0)] = eEv
+    }
 
   implicit def simpleGraphMonoid[V: Vertex, E: Edge]: CommutativeMonoid[SimpleGraph[V]] =
     new CommutativeMonoid[SimpleGraph[V]] {
-      override def empty: SimpleGraph[V] = NullGraph[V]()
+      override def empty: SimpleGraph[V] = NullGraph[V]
 
-      //TODO: Implement combine using Union
+      //TODO: Efficiently implement combine.
       override def combine(x: SimpleGraph[V], y: SimpleGraph[V]): SimpleGraph[V] = ???
     }
 }
 
-private trait SimpleGraphGraph[V0, E0] extends Graph[SimpleGraph, V0, E0] {
-  override implicit def V: Vertex[V0] {type E = E0}
-  override implicit def E: Edge[E0] {type V = V0}
+private trait SimpleGraphGraph[V0] extends Graph[SimpleGraph.G, V0, (V0, V0)] {
+  override implicit def V: Vertex.Aux[V0, (V0, V0)]
+  override implicit def E: Edge.Aux[(V0, V0), V0]
 
-  override def vertices(g: SimpleGraph[V0, E0]): Iterable[V0] = g.vertices
+  //TODO: Move implementations of plus/minus methods back up to main type?
+  //TODO: Use pattern matching to check for NullGraph as a performance optimisation
+  //TODO: Investigate Specialization?
 
-  override def edges(g: SimpleGraph[V0, E0]): Iterable[E0] = g.edges
+  override def size(g: SimpleGraph[V0]) = g.size
 
-  override def plusVertex(g: SimpleGraph[V0, E0], v: V0): SimpleGraph[V0, E0] = GCons(g.adj + (v -> Set.empty[E0]))
+  override def order(g: SimpleGraph[V0]) = g.order
 
-  override def minusVertex(g: SimpleGraph[V0, E0], v: V0): SimpleGraph[V0, E0] = GCons(g.adj - v)
+  override def vertices(g: SimpleGraph[V0]): Iterator[V0] = g.vertices
 
-  override def plusEdge(g: SimpleGraph[V0, E0], e: E0): SimpleGraph[V0, E0] = g plusEdge e
+  override def edges(g: SimpleGraph[V0]): Iterator[(V0, V0)] = g.edges
 
-  override def minusEdge(g: SimpleGraph[V0, E0], e: E0): SimpleGraph[V0, E0] = g minusEdge e
+  override def plusVertex(g: SimpleGraph[V0], v: V0): SimpleGraph[V0] = GCons(g.adj + (v -> Set.empty[V0]))
 
-  override def union(lg: SimpleGraph[V0, E0], rg: SimpleGraph[V0, E0]): SimpleGraph[V0, E0] = ???
+  override def minusVertex(g: SimpleGraph[V0], v: V0): SimpleGraph[V0] = GCons(g.adj - v)
 
-  override def intersection(lg: SimpleGraph[V0, E0], rg: SimpleGraph[V0, E0]): SimpleGraph[V0, E0] = ???
+  override def plusEdge(g: SimpleGraph.G[V0, (V0, V0)], e: (V0, V0)): SimpleGraph.G[V0, (V0, V0)] = {
+    val dAdj = g.adj.get(E.left(e)).fold(g.adj + (E.left(e) -> Set(E.right(e)))) { edges =>
+      g.adj.updated(E.left(e), edges + E.right(e))
+    }
+    val ddAdj = dAdj.get(E.right(e)).fold(dAdj + (E.right(e) -> Set(E.left(e)))) { edges =>
+      dAdj updated(E.right(e), edges + E.left(e))
+    }
+    GCons(ddAdj)
+  }
+
+  override def minusEdge(g: SimpleGraph.G[V0, (V0, V0)], e: (V0, V0)): SimpleGraph.G[V0, (V0, V0)] = {
+    val dAdj = g.adj.get(E.left(e)).fold(g.adj)(edges => g.adj.updated(E.left(e), edges - E.right(e)))
+    val ddAdj = dAdj.get(E.right(e)).fold(dAdj)(edges => dAdj.updated(E.left(e), edges - E.left(e)))
+    GCons(ddAdj)
+  }
 }

@@ -44,6 +44,8 @@ trait Edge[E] {
 
 object Edge {
 
+  type Aux[E0, V0] = Edge[E0] { type V = V0 }
+
   implicit class EdgeOps[E: Edge](e: E) {
     val eEv = implicitly[Edge[E]]
     def vertices = eEv.vertices(e)

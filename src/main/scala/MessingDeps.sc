@@ -22,3 +22,9 @@ val b = for {
   (v, ns) <- a.toIterator
   n <- ns
 } yield (v, n)
+
+val c = a.get(1)
+val d = c.fold("None")(words => words mkString ",")
+
+val e: Byte = 7
+
