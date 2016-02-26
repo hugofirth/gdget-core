@@ -68,6 +68,14 @@ private[simple] case object NullGraph extends SimpleGraph[Nothing] {
   *
   * [[SimpleGraphInstances]] provides an instance of the [[org.gdget.Vertex]] typeclass for SimpleVertex.
   *
+  * TODO: Decide between implicit G and Graph[G] params for all Vertex TC functions, or rethinking the top level Graph API
+  *
+  * Don't mind assuming there will always be a VWrapper (VertexView, VContext w.e) but how do we handle HK types in Graph TC?
+  *
+  * Edge return types are also tricky ... Does the edge store VWrappers? Maybe the edge constructor takes an implicit G?
+  *
+  * TODO: Add getVertex method to Graph
+  *
   * @param v The vertex's underlying representation
   * @param neighbours The set of vertex representations which are connected to v
   * @tparam V The type of the vertex's underlying representation
@@ -110,6 +118,26 @@ sealed trait SimpleGraphInstances { self =>
       //TODO: Efficiently implement combine.
       override def combine(x: SimpleGraph[V], y: SimpleGraph[V]): SimpleGraph[V] = ???
     }
+
+  implicit def tuple2Edge[V0: Vertex]: Edge[(V0, V0)] = new Edge[(V0, V0)] {
+
+    override type V = V0
+    override implicit def vertexV = implicitly[Vertex[V0]]
+
+    override def vertices(e: (V0, V0)) = e
+
+    override def left(e: (V0, V0)) = e._1
+
+    override def right(e: (V0, V0)) = e._2
+
+    //TODO: Swi
+    override def other(e: (V0, V0), v: V0) =
+      if(e._1 == v)
+        Option(e._2)
+      else if(e._2 == v)
+        Option(e._1)
+      else None
+  }
 }
 
 private trait SimpleGraphGraph[V0] extends Graph[SimpleGraph.G, V0, (V0, V0)] {
