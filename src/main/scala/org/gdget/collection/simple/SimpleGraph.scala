@@ -130,7 +130,6 @@ sealed trait SimpleGraphInstances { self =>
 
     override def right(e: (V0, V0)) = e._2
 
-    //TODO: Swi
     override def other(e: (V0, V0), v: V0) =
       if(e._1 == v)
         Option(e._2)

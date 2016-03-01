@@ -17,13 +17,24 @@
   */
 package org.gdget
 
-/** Description of Class
+import language.higherKinds
+
+/** The Neighbourhood typeclass represents the closed neighbourhood of a given center vertex v; i.e. the induced
+  * sub-graph of a graph G which includes v and all v's adjacent vertices.
   *
-  * TODO: Implement an Adj typeclass which handles neighbours() and degree()
-  * Maybe consider an AdjD typeclass as well for directed ?
-  *
+  * @tparam N The type implementing graph like functionality
+  * @tparam V The vertex type contained in a graph of type N
+  * @tparam E the edge type connecting vertices of type V, in a graph of type N
+  * @see [[Graph]]
   * @author hugofirth
   */
-trait Adjacent {
+trait Neighbourhood[N[_, _], V, E] extends Graph[N, V, E] { self =>
 
+  def degree(n: N[V, E]): Long = self.size(n)
+
+  def center(n: N[V, E]): V
+
+  def neighbours(n: N[V, E]): Iterator[V] = self.vertices(n)
+
+  def edges(n: N[V, E]): Iterator[E] = self.edges(n)
 }

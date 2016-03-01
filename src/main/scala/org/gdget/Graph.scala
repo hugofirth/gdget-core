@@ -21,8 +21,6 @@ import scala.language.{existentials, higherKinds, reflectiveCalls}
 
 /** The base Typeclass defining behaviour for simple graphs.
   *
-  * Note that my implicit conversions from tinker/neo/graphx to gdget are infact just typeclass instances.
-  *
   * @see [[Vertex]]
   * @see [[Edge]]
   * @tparam G The type implementing graph like functionality
@@ -33,6 +31,10 @@ import scala.language.{existentials, higherKinds, reflectiveCalls}
   */
 trait Graph[G[_, _], V, E] { self =>
 
+  /** type N[V, E] represents the closed neighbourhood of a given center vertex v; i.e. the induced sub-graph of G which
+    * includes v and all v's adjacent vertices */
+//  type N[_ <: V, _ <: E]
+
   /** Make sure that V, E have instances of appropriate typeclasses */
   implicit def V: Vertex[V]
   implicit def E: Edge[E]
@@ -40,11 +42,26 @@ trait Graph[G[_, _], V, E] { self =>
   def vertices(g: G[V, E]): Iterator[V]
   def edges(g: G[V, E]): Iterator[E]
 
+  /**
+    *
+    * WARNING: Where appropriate should be overridden in typeclass instances to improve performance (for example if a
+    * graph's underlying representation supports O(1) lookups on vertices.
+    *
+    * @param g
+    * @param v
+    * @return
+    */
+  def getVertex(g: G[V, E], v: V): Option[V] = self.findVertex(g)(_ == v)
+
+  def getEdge(g: G[V, E], e: E): Option[E] = self.findEdge(g)(_ == e)
+
+  def neighbourhood(g: G[V, E], v: V): N[V, E]
 
   /** The order of the graph. This is equal to the number of vertices stored.
     *
     * WARNING: Will not complete for graphs where |V| is functionally infinite.
     *
+    * @param g
     * @return The number of vertices in the graph
     */
   def order(g: G[V, E]): Long = self.vertices(g).size

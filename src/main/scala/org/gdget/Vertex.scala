@@ -31,7 +31,7 @@ trait Vertex[V] { self =>
   type E
   implicit def edgeE: Edge[E]
 
-  def edges(v: V): Set[E]
+  def edges(v: V): Set[E] = ???
   def plusEdge(v: V, e: E): V
   def minusEdge(v: V, e: E): V
   def plusEdges(v: V, e: E*): V
