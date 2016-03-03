@@ -19,13 +19,14 @@ package org.gdget.labelled
 
 import org.gdget.Graph
 
-import language.higherKinds
+import language.{higherKinds, reflectiveCalls}
 
 /** Description of Class
   *
   * @author hugofirth
   */
-trait LabelledGraph[G[_, _, Lv <: Label, Le <: Label], V, E] extends Graph[G, V, E]{
+trait LabelledGraph[G[_, _, _[_] <: Label[_], _[_] <: Label[_]], V, E, Lv[_] <: Label[_], Le[_] <: Label[_]] extends
+  Graph[({type λ[v, e] = G[v, e, Lv, Le] })#λ, V, E]{
 
   //TODO: Look at merge-able Union types / Label sets
   //  def union[LeftLv[_] <: Label[_],

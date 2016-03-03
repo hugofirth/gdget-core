@@ -21,7 +21,6 @@ import scala.language.{existentials, higherKinds, reflectiveCalls}
 
 /** The base Typeclass defining behaviour for simple graphs.
   *
-  * @see [[Vertex]]
   * @see [[Edge]]
   * @tparam G The type implementing graph like functionality
   * @tparam V The vertex type contained in a graph of type G
@@ -29,16 +28,17 @@ import scala.language.{existentials, higherKinds, reflectiveCalls}
   * @author hugofirth
   * @since 0.1
   */
-trait Graph[G[_, _], V, E] { self =>
+trait Graph[G[_, _], V, E] extends Any { self =>
 
-  /** type N[V, E] represents the closed neighbourhood of a given center vertex v; i.e. the induced sub-graph of G which
-    * includes v and all v's adjacent vertices */
-//  type N[_ <: V, _ <: E]
 
-  /** Make sure that V, E have instances of appropriate typeclasses */
-  implicit def V: Vertex[V]
-  implicit def E: Edge[E]
+  /** type member N represents the closed-neighbourhood of a given vertex v, and should provide a [[Neighbourhood]] instance */
+  type N[_, _]
 
+  /** Make sure that E and N have instances of the appropriate typeclasses */
+  implicit def E: Edge.Aux[E, V]
+  implicit def N: Neighbourhood[N, V, E]
+
+  //TODO: Look at using Streams or Iterables to represent this
   def vertices(g: G[V, E]): Iterator[V]
   def edges(g: G[V, E]): Iterator[E]
 
@@ -55,7 +55,7 @@ trait Graph[G[_, _], V, E] { self =>
 
   def getEdge(g: G[V, E], e: E): Option[E] = self.findEdge(g)(_ == e)
 
-  def neighbourhood(g: G[V, E], v: V): N[V, E]
+  def neighbourhood(g: G[V, E], v: V): Option[N[V, E]]
 
   /** The order of the graph. This is equal to the number of vertices stored.
     *
@@ -101,12 +101,15 @@ trait Graph[G[_, _], V, E] { self =>
 object Graph {
 
   //TODO: Investigate Machinist for cheap (unboxed) typeclass ops.
-
-  implicit class GraphOps[G[_, _], V: Vertex, E: Edge](g: G[V, E])(implicit gEv: Graph[G, V, E]) {
+  //Possible alternative to machinist is to have Ops classes not take implicit gEv and have it extend AnyVal.
+  implicit class GraphOps[G[_, _], V, E: Edge](g: G[V, E])(implicit val gEv: Graph[G, V, E]) {
     def vertices = gEv.vertices(g)
     def edges = gEv.edges(g)
     def order = gEv.order(g)
     def size = gEv.size(g)
+    def getVertex(v: V): Option[V] = gEv.getVertex(g, v)
+    def getEdge(e: E): Option[E] = gEv.getEdge(g, e)
+    def neighbourhood(v: V) = gEv.neighbourhood(g, v)
     def union(that: G[V, E]) = gEv.union(g, that)
     def findVertex(f: (V) => Boolean) = gEv.findVertex(g)(f)
     def findEdge(f: (E) => Boolean) = gEv.findEdge(g)(f)

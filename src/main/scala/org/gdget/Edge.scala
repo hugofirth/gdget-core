@@ -22,16 +22,14 @@ package org.gdget
   *
   * Types which implement EdgeLike are considered to be unbaised, undirected edges.
   *
-  * @see [[Vertex]]
   * @tparam E The type implementing edge like functionality
   * @author hugofirth
   * @since 0.1
   */
-trait Edge[E] {
+trait Edge[E] extends Any {
 
-  /** Each Edge instance must define an V type member which has an instance of Vertex */
+  /** Each Edge instance must define an V type member, representing the type of vertices being connected */
   type V
-  implicit def vertexV: Vertex[V]
 
   def vertices(e: E): (V, V)
 
@@ -45,6 +43,8 @@ trait Edge[E] {
 object Edge {
 
   type Aux[E0, V0] = Edge[E0] { type V = V0 }
+
+  //Look into inline apply[E] = implicitly[Edge[E]] to make boilerplate better.
 
   implicit class EdgeOps[E: Edge](e: E) {
     val eEv = implicitly[Edge[E]]
