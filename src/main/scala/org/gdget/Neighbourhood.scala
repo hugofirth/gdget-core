@@ -43,12 +43,35 @@ trait Neighbourhood[N[_, _], V, E] extends Any { self =>
   //TODO: look at pattern matching constructor for edge (center |->| v, v |->| center etc...) to increase clarity of this method
   //Should override for performance if neighbours are known directly, otherwise we're going neighbours->edges->neighbours
   def neighbours(n: N[V, E]): Iterator[V] = {
-    val center = self.center(n)
-    edges(n).map(E.other(_, center)).flatten
+    edges(n).map(E.other(_, self.center(n))).flatten
   }
 
   def edges(n: N[V, E]): Iterator[E]
 
+  /** Method for returning the "In" edges adjacent to the center vertex of a given neighbourhood.
+    *
+    * NOTE: Remember that gdget's conventions regarding edge directions are as follows:
+    *   - All edges are directed by default.
+    *   - The direction of an edge may be ignored at query time to simulate the existence of an undirected edge.
+    *   - The simple convention is that an edge's left vertex is the source, its right vertex the destination.
+    *
+    * @param n The neighbourhood whose directed "In" edges we are looking to return
+    * @return The set of edges whose destination vertex equals center(n)
+    */
+  def inEdges(n: N[V, E]): Iterator[E] = self.edges(n).filter(E.right(_) == self.center(n))
+
+
+  /** Method for returning the "Out" edges adjacent to the center vertex of a given neighbourhood.
+    *
+    * NOTE: Remember that gdget's conventions regarding edges are as follows:
+    *   - All edges are directed by default.
+    *   - The direction of an edge may be ignored at query time to simulate the existence of an undirected edge.
+    *   - The simple convention is that an edge's left vertex is the source, its right vertex the destination.
+    *
+    * @param n The neighbourhood whose directed "out" edges we are looking to return
+    * @return The set of edges whose source vertex equals center(n)
+    */
+  def outEdges(n: N[V, E]): Iterator[E] = self.edges(n).filter(E.left(_) == self.center(n))
 }
 
 object Neighbourhood {

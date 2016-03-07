@@ -24,6 +24,6 @@ package org.gdget.collection
 package object simple {
 
   /** Type aliases */
-  type AdjacencyList[A] = Map[A, Set[A]]
+  type AdjacencyList[A] = Map[A, (Set[A], Set[A])]
 
 }

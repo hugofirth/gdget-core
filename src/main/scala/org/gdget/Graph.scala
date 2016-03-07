@@ -19,6 +19,8 @@ package org.gdget
 
 import scala.language.{existentials, higherKinds, reflectiveCalls}
 
+import cats._
+
 /** The base Typeclass defining behaviour for simple graphs.
   *
   * @see [[Edge]]
@@ -38,7 +40,7 @@ trait Graph[G[_, _], V, E] extends Any { self =>
   implicit def E: Edge.Aux[E, V]
   implicit def N: Neighbourhood[N, V, E]
 
-  //TODO: Look at using Streams or Iterables to represent this
+  //TODO: Look at using Stream or Seq (or if must Iterable) to represent this
   def vertices(g: G[V, E]): Iterator[V]
   def edges(g: G[V, E]): Iterator[E]
 
@@ -74,8 +76,9 @@ trait Graph[G[_, _], V, E] extends Any { self =>
     */
   def size(g: G[V, E]): Long = self.edges(g).size
 
-  //TODO: Implement Union by requiring G: Monoid and using the combine method
-  def union(lg: G[V, E], rg: G[V, E]): G[V, E] = ???
+  def union(lg: G[V, E], rg: G[V, E])(implicit ev: Monoid[G[V,E]]): G[V, E] = Monoid[G[V,E]].combine(lg, rg)
+
+  //TODO: Implement unionAll ?
 
   def findVertex(g: G[V, E])(f: (V) => Boolean): Option[V] = self.vertices(g) find f
 
@@ -110,7 +113,7 @@ object Graph {
     def getVertex(v: V): Option[V] = gEv.getVertex(g, v)
     def getEdge(e: E): Option[E] = gEv.getEdge(g, e)
     def neighbourhood(v: V) = gEv.neighbourhood(g, v)
-    def union(that: G[V, E]) = gEv.union(g, that)
+    def union(that: G[V, E])(implicit ev: Monoid[G[V, E]]) = gEv.union(g, that)
     def findVertex(f: (V) => Boolean) = gEv.findVertex(g)(f)
     def findEdge(f: (E) => Boolean) = gEv.findEdge(g)(f)
     def plusVertex(v: V) = gEv.plusVertex(g, v)
