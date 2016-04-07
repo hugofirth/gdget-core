@@ -24,7 +24,9 @@ package org.gdget
 package object collection {
 
   /** Internal representation of an Adjacency List */
-  type AdjacencyList[A, B] = Map[A, Set[B]]
+//  type AdjacencyList[A, B] = Map[A, Set[B]]
 
 
+  /** Representation of a Label */
+  type Label = Byte
 }

@@ -26,7 +26,7 @@ package org.gdget
   * @author hugofirth
   * @since 0.1
   */
-trait Edge[E] extends Any {
+trait Edge[E] extends Any with Serializable {
 
   /** Each Edge instance must define an V type member, representing the type of vertices being connected */
   type V
@@ -44,14 +44,13 @@ object Edge {
 
   type Aux[E0, V0] = Edge[E0] { type V = V0 }
 
-  //Look into inline apply[E] = implicitly[Edge[E]] to make boilerplate better.
+  //TODO: Look into inline apply[E] = implicitly[Edge[E]] to make boilerplate better.
 
-  implicit class EdgeOps[E: Edge](e: E) {
-    val eEv = implicitly[Edge[E]]
-    def vertices = eEv.vertices(e)
-    def left = eEv.left(e)
-    def right = eEv.right(e)
-    def other(v: eEv.V) = eEv.other(e, v)
+  implicit class EdgeOps[E](e: E)(implicit val ev: Edge[E]) {
+    def vertices = ev.vertices(e)
+    def left = ev.left(e)
+    def right = ev.right(e)
+    def other(v: ev.V) = ev.other(e, v)
   }
 
 }

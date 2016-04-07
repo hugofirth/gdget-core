@@ -25,8 +25,10 @@ import language.{higherKinds, reflectiveCalls}
   *
   * @author hugofirth
   */
-trait LabelledGraph[G[_, _, _[_] <: Label[_], _[_] <: Label[_]], V, E, Lv[_] <: Label[_], Le[_] <: Label[_]] extends
-  Graph[({type λ[v, e] = G[v, e, Lv, Le] })#λ, V, E]{
+trait LGraph[G[_, _], V, E[_ <: V, _ <: V]] extends Graph[G, V, E]{
+
+
+  override implicit def E: LEdge[E, _ <: V, _ <: V, V]
 
   //TODO: Look at merge-able Union types / Label sets
   //  def union[LeftLv[_] <: Label[_],

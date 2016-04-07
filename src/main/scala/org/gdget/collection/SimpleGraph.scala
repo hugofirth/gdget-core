@@ -15,18 +15,15 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-package org.gdget.collection.simple
-
-import language.higherKinds
+package org.gdget.collection
 
 import cats._
-import cats.std.all._
-import cats.implicits._
+import org.gdget.{Edge, Graph, Neighbourhood}
 
-import org.gdget.{Neighbourhood, Edge, Graph}
+import scala.language.higherKinds
 
-/** SimpleGraph is an unlabelled, undirected graph datastructure. It provides instances of the 
-  * [[algebra.CommutativeMonoid]] & [[org.gdget.Graph]] typeclasses.
+/** SimpleGraph is an unlabelled, directed graph datastructure. It provides instances of the
+  * [[algebra.Monoid]] & [[org.gdget.Graph]] typeclasses.
   * 
   * As its name might suggest, SimpleGraph is neither particularly optimised, or particularly principled (though it is
   * immutable). SimpleGraph is designed to be easy to understand, providing a basis for comparison between various other 
@@ -37,11 +34,14 @@ import org.gdget.{Neighbourhood, Edge, Graph}
   */
 sealed abstract class SimpleGraph[V] {
 
-  private[simple] def adj: AdjacencyList[V]
+  import SimpleGraph._
+
+  private[gdget] def adj: AdjacencyList[V]
 
   def size: Long
   def order: Long
-  
+
+
   def vertices = adj.keys.iterator
 
   def edges = for {
@@ -51,25 +51,11 @@ sealed abstract class SimpleGraph[V] {
 
 }
 
-private[simple] final case class GCons[V](adj: AdjacencyList[V]) extends SimpleGraph[V] {
-  override lazy val size: Long = vertices.size
-  override lazy val order: Long = edges.size
-}
-
-private[simple] case object NullGraph extends SimpleGraph[Nothing] {
-    val size = 0L
-    val order = 0L
-
-    override private[simple] val adj: AdjacencyList[Nothing] = Map.empty[Nothing, (Set[Nothing], Set[Nothing])]
-
-    def unapply[V](g: SimpleGraph[V]): Boolean = g eq this
-
-    def apply[V]: SimpleGraph[V] = this.asInstanceOf[SimpleGraph[V]]
-}
-
 /** SimpleNeighbourhood is a case class which wraps rows of the Adjacency matrix representation within SimpleGraph.
   * SimpleNeighbourhood instances correspond to the closed neighbourhood of vertices adjacent to a center vertex v; they
   * provide an instance of the [[org.gdget.Neighbourhood]] typeclass.
+  *
+  * TODO: Update Neighbourhood to have (center, in, out), rather than (center, (in, out))
   *
   * @param center The vertex upon which this neighbourhood is centered
   * @param neighbours The set of vertices which are connected to `center`
@@ -78,6 +64,8 @@ private[simple] case object NullGraph extends SimpleGraph[Nothing] {
 final case class SimpleNeighbourhood[V](center: V, neighbours: (Set[V], Set[V]))
 
 object SimpleGraph extends SimpleGraphInstances {
+
+  type AdjacencyList[V] = Map[V, (Set[V], Set[V])]
 
   /** Aliases allow SimpleGraph to "pretend" to conform to structure expected in Graph and Neighbourhood typeclasses
     * despite E being fixed as (V, V) */
@@ -92,12 +80,41 @@ object SimpleGraph extends SimpleGraphInstances {
 
   def empty[V]: SimpleGraph[V] = NullGraph[V]
 
-  //TODO: Create final apply method for creating SimpleGraphs w. any implicits fot TC[V] where TC are required typlecasses
+  final def apply[V](es: (V, V)*): SimpleGraph[V] = {
+    //TODO: Clean up (Neighbours Case class will help) and do in 1 pass
+    val repr = es.foldLeft(Map.empty[V, (Set[V], Set[V])]) { (adj,e) =>
+      val outAdj = adj.get(e._1).fold(adj + (e._1 -> (Set.empty[V], Set(e._2)))) {
+        case (inEdges, outEdges) => adj.updated(e._1, (inEdges, outEdges + e._2))
+      }
+      outAdj.get(e._2).fold(outAdj + (e._2 -> (Set(e._1), Set.empty[V]))) {
+        case (inEdges, outEdges) => outAdj.updated(e._2, (inEdges + e._1, outEdges))
+      }
+    }
+    GCons(repr)
+  }
 
   //TODO: Create conversion methods fromList, fromSet etc.... Maybe extract to a GraphCompanion?
+
+  private[gdget] final case class GCons[V](adj: AdjacencyList[V]) extends SimpleGraph[V] {
+    override lazy val size: Long = vertices.size
+    override lazy val order: Long = edges.size
+  }
+
+  private[gdget] case object NullGraph extends SimpleGraph[Nothing] {
+    val size = 0L
+    val order = 0L
+
+    override private[gdget] val adj: AdjacencyList[Nothing] = Map.empty[Nothing, (Set[Nothing], Set[Nothing])]
+
+    //TODO: Find out what this unapply is doing (lifted verbatim from Scalaz Map code)
+    def unapply[V](g: SimpleGraph[V]): Boolean = g eq this
+
+    def apply[V]: SimpleGraph[V] = this.asInstanceOf[SimpleGraph[V]]
+  }
 }
 
-sealed trait SimpleGraphInstances { self =>
+trait SimpleGraphInstances {
+  import SimpleGraph._
 
   implicit def simpleGraph[V](implicit eEv: Edge.Aux[(V, V), V],
                               nEv: Neighbourhood[SimpleGraph.N, V, (V, V)]): Graph[SimpleGraph.G, V, (V, V)] =
@@ -108,13 +125,13 @@ sealed trait SimpleGraphInstances { self =>
       override implicit def N = nEv
     }
 
-  implicit def simpleGraphMonoid[V](implicit ev: Monoid[AdjacencyList[V]]): Monoid[SimpleGraph[V]] =
+  implicit def simpleGraphMonoid[V](implicit ev: Monoid[SimpleGraph.AdjacencyList[V]]): Monoid[SimpleGraph[V]] =
     new Monoid[SimpleGraph[V]] {
 
-      override def empty: SimpleGraph[V] = NullGraph[V]
+      override def empty: SimpleGraph[V] = SimpleGraph.empty[V]
 
       override def combine(x: SimpleGraph[V], y: SimpleGraph[V]): SimpleGraph[V] = {
-        GCons(Monoid[AdjacencyList[V]].combine(x.adj, y.adj))
+        GCons(Monoid[SimpleGraph.AdjacencyList[V]].combine(x.adj, y.adj))
       }
     }
 
@@ -149,11 +166,11 @@ sealed trait SimpleGraphInstances { self =>
    }
 }
 
-private[simple] trait SimpleGraphLike[V] extends Graph[SimpleGraph.G, V, (V, V)] {
+private[gdget] sealed trait SimpleGraphLike[V] extends Graph[SimpleGraph.G, V, (V, V)] {
+  import SimpleGraph._
 
   override type N[V0, E] = SimpleNeighbourhood[V0]
 
-  //TODO: Move implementations of plus/minus methods back up to main type?
   //TODO: Use pattern matching to check for NullGraph as a performance optimisation
   //TODO: Investigate Specialization?
 
@@ -170,9 +187,6 @@ private[simple] trait SimpleGraphLike[V] extends Graph[SimpleGraph.G, V, (V, V)]
   override def minusVertex(g: SimpleGraph[V], v: V): SimpleGraph[V] = GCons(g.adj - v)
 
   override def plusEdge(g: SimpleGraph.G[V, (V, V)], e: (V, V)): SimpleGraph.G[V, (V, V)] = {
-    //TODO: implement a private[simple] case class for an open neighbourhood (without center) to make this clearer.
-    //  tuple syntax is a bit counter-intuitive
-
     //We add to edges._2 because convention for neighbourhood tuples is (inEdges, outEdges), whilst convention for Edge
     //  types is that the left-hand vertex is the source
     val dAdj = g.adj.get(E.left(e)).fold(g.adj + ( E.left(e) -> (Set.empty[V],Set(E.right(e))) )) { edges =>
@@ -197,3 +211,9 @@ private[simple] trait SimpleGraphLike[V] extends Graph[SimpleGraph.G, V, (V, V)]
 
   override def neighbourhood(g: SimpleGraph[V], v: V) = g.adj.get(v).map(SimpleNeighbourhood(v, _))
 }
+
+private[gdget] sealed trait SimpleNeighbourhoodLike[V] extends Neighbourhood[SimpleGraph.N, V, (V, V)] {}
+
+private[gdget] sealed trait Tuple2Edge[V] extends Edge[(V, V)] {}
+
+private[gdget] sealed trait SimpleGraphMonoid[V] extends Monoid[SimpleGraph[V]] {}

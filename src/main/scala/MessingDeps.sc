@@ -1,3 +1,5 @@
+import org.gdget.collection.SimpleGraph
+
 val a = Map(
   1 -> (Set(2,3), Set(4,5,6)),
   2 -> (Set(5,3), Set(1)),
@@ -7,13 +9,16 @@ val a = Map(
   6 -> (Set(1,5), Set(3))
 )
 
-val edges = for {
-  (v, neighbours) <- a.toSeq
-  in <- neighbours._1
-} yield (in, v)
-
-
-val b = Set(1,2,3,4)
-
-val c = b-5
+val b = SimpleGraph[Int](
+  1 -> 4,
+  1 -> 5,
+  1 -> 6,
+  2 -> 1,
+  3 -> 2,
+  3 -> 1,
+  4 -> 3,
+  5 -> 2,
+  5 -> 6,
+  6 -> 3
+)
 

@@ -30,7 +30,7 @@ import cats._
   * @author hugofirth
   * @since 0.1
   */
-trait Graph[G[_, _], V, E] extends Any { self =>
+trait Graph[G[_, _], V, E] extends Any with Serializable {
 
 
   /** type member N represents the closed-neighbourhood of a given vertex v, and should provide a [[Neighbourhood]] instance */
@@ -40,7 +40,7 @@ trait Graph[G[_, _], V, E] extends Any { self =>
   implicit def E: Edge.Aux[E, V]
   implicit def N: Neighbourhood[N, V, E]
 
-  //TODO: Look at using Stream or Seq (or if must Iterable) to represent this
+  //TODO: Look at using Stream, Streaming or Seq to represent this - Iterator is mutable!
   def vertices(g: G[V, E]): Iterator[V]
   def edges(g: G[V, E]): Iterator[E]
 
@@ -53,9 +53,9 @@ trait Graph[G[_, _], V, E] extends Any { self =>
     * @param v
     * @return
     */
-  def getVertex(g: G[V, E], v: V): Option[V] = self.findVertex(g)(_ == v)
+  def getVertex(g: G[V, E], v: V): Option[V] = this.findVertex(g)(_ == v)
 
-  def getEdge(g: G[V, E], e: E): Option[E] = self.findEdge(g)(_ == e)
+  def getEdge(g: G[V, E], e: E): Option[E] = this.findEdge(g)(_ == e)
 
   def neighbourhood(g: G[V, E], v: V): Option[N[V, E]]
 
@@ -66,7 +66,7 @@ trait Graph[G[_, _], V, E] extends Any { self =>
     * @param g
     * @return The number of vertices in the graph
     */
-  def order(g: G[V, E]): Long = self.vertices(g).size
+  def order(g: G[V, E]): Long = this.vertices(g).size
 
   /** The size of the graph. This is equal to the number of edges stored.
     *
@@ -74,15 +74,15 @@ trait Graph[G[_, _], V, E] extends Any { self =>
     *
     * @return The number of edges in the graph
     */
-  def size(g: G[V, E]): Long = self.edges(g).size
+  def size(g: G[V, E]): Long = this.edges(g).size
 
   def union(lg: G[V, E], rg: G[V, E])(implicit ev: Monoid[G[V,E]]): G[V, E] = Monoid[G[V,E]].combine(lg, rg)
 
   //TODO: Implement unionAll ?
 
-  def findVertex(g: G[V, E])(f: (V) => Boolean): Option[V] = self.vertices(g) find f
+  def findVertex(g: G[V, E])(f: (V) => Boolean): Option[V] = this.vertices(g) find f
 
-  def findEdge(g: G[V, E])(f: (E) => Boolean): Option[E] = self.edges(g) find f
+  def findEdge(g: G[V, E])(f: (E) => Boolean): Option[E] = this.edges(g) find f
 
   def plusVertex(g: G[V, E], v: V): G[V, E]
 
@@ -103,7 +103,7 @@ trait Graph[G[_, _], V, E] extends Any { self =>
 
 object Graph {
 
-  //TODO: Investigate Machinist for cheap (unboxed) typeclass ops.
+  //TODO: Investigate Machinist for cheap (unboxed) typeclass ops. Or else extend AnyVal
   //Possible alternative to machinist is to have Ops classes not take implicit gEv and have it extend AnyVal.
   implicit class GraphOps[G[_, _], V, E: Edge](g: G[V, E])(implicit val gEv: Graph[G, V, E]) {
     def vertices = gEv.vertices(g)

@@ -31,7 +31,7 @@ import language.higherKinds
   * @see [[Graph]]
   * @author hugofirth
   */
-trait Neighbourhood[N[_, _], V, E] extends Any { self =>
+trait Neighbourhood[N[_, _], V, E] extends Any with Serializable { self =>
 
   /** Make sure that E provides an instance of the Edge typeclass with type member V = V */
   implicit def E: Edge.Aux[E, V]
