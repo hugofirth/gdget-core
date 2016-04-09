@@ -145,12 +145,14 @@ trait SimpleGraphInstances {
 
     override def right(e: (V0, V0)) = e._2
 
+    //TODO: Use Cats.Eq
     override def other(e: (V0, V0), v: V0) =
       if(e._1 == v)
         Option(e._2)
       else if(e._2 == v)
         Option(e._1)
-      else None
+      else
+        None
   }
 
   implicit def simpleNeighbourhood[V](implicit eEv: Edge.Aux[(V, V), V]): Neighbourhood[SimpleGraph.N, V, (V, V)] =

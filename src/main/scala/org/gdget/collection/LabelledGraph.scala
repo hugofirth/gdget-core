@@ -17,10 +17,13 @@
   */
 package org.gdget.collection
 
-import cats.Monoid
-import org.gdget.{Edge, Graph, Neighbourhood}
+import cats._
+import cats.std.all._
+import cats.syntax.eq._
+import org.gdget._
 
 import scala.collection.BitSet
+import language.higherKinds
 
 /** LabelledGraph is a directed, labelled graph. It is designed to be resident in memory and relatively space efficient,
   * storing upto 200M edges without needing to spill to disk. It provides instances of the [[algebra.Monoid]] &
@@ -42,11 +45,15 @@ import scala.collection.BitSet
   * @see [[LabelledNeighbourhood]]
   * @author hugofirth
   */
+//TODO: Make this into a trait
 sealed abstract class LabelledGraph[V, E] {
 
   import LabelledGraph._
 
-  private[gdget] def adj: AdjacencyList[V, E]
+  private[gdget] def adj: AdjacencyList[V]
+
+  //TODO: Implement as val and make private?
+  def labels: Map[Int, E]
 
   def size: Long
   def order: Long
@@ -54,21 +61,22 @@ sealed abstract class LabelledGraph[V, E] {
   def vertices = adj.keys.iterator
 
   def edges = for {
-    (v, (label, inEdges, outEdges)) <- adj.toIterator
-    e <- inEdges
-  } yield e
+    (v, (inEdges, outEdges)) <- adj.toIterator
+    (neighbour, edgeLabels) <- inEdges
+    label <- edgeLabels
+  } yield LabelledEdge(neighbour, labels(label), v)
 
 }
 
 object LabelledGraph {
 
-  type AdjacencyList[V, E] = Map[V, (Label, Map[V, BitSet], Map[V, BitSet])]
+  type AdjacencyList[V] = Map[V, (Map[V, BitSet], Map[V, BitSet])]
 
-  def empty[V, E]: LabelledGraph[V, E] = ???
+  def empty[V, E]: LabelledGraph[V, E] = NullGraph[V, E]
 
-  final def apply[V, E](es: E*)(implicit eEv: Edge.Aux[E, V]): LabelledGraph = ???
+  final def apply[V, E: Labellable](es: LabelledEdge[V, E, V]*): LabelledGraph[V, E] = ???
 
-  private[gdget] final case class GCons[V, E](adj: AdjacencyList[V, E]) extends LabelledGraph[V, E] {
+  private[gdget] final case class GCons[V, E](adj: AdjacencyList[V]) extends LabelledGraph[V, E] {
     override lazy val size: Long = vertices.size
     override lazy val order: Long = edges.size
   }
@@ -77,8 +85,8 @@ object LabelledGraph {
     val size = 0L
     val order = 0L
 
-    override private[gdget] val adj: AdjacencyList[Nothing, Nothing] =
-      Map.empty[Nothing, (Label, Map[Nothing, BitSet], Map[Nothing, BitSet])]
+    override private[gdget] val adj: AdjacencyList[Nothing] =
+      Map.empty[Nothing, (Map[Nothing, BitSet], Map[Nothing, BitSet])]
 
     //TODO: Find out what this unapply is doing (lifted verbatim from Scalaz Map code)
     def unapply[V, E](g: LabelledGraph[V, E]): Boolean = g eq this
@@ -90,27 +98,65 @@ object LabelledGraph {
 /**
   *
   * @param center the vertex upon which this neighbourhood is centered
-  * @param label the byte label of this vertex
   * @param in
   * @param out
   * @tparam V
   */
-final case class LabelledNeighbourhood[V, E](center: V, label: Label, in: Map[V, Set[E]], out: Map[V, Set[E]])
+final case class LabelledNeighbourhood[V](center: V, in: Map[V, BitSet], out: Map[V, BitSet])
 
 
-final case class LabelledEdge[L, R](source: L, label: Label, destination: R)
+final case class LabelledEdge[+L, E: Labellable, +R](source: L, label: E, destination: R)
 
 trait LabelledGraphInstances {
   import LabelledGraph._
 
+  implicit def labelledGraphMonoid[V, E](implicit ev: Monoid[AdjacencyList[V]]) = new Monoid[LabelledGraph[V, E]] {
+    def empty = LabelledGraph.empty[V, E]
+
+    def combine(x: LabelledGraph[V, E], y: LabelledGraph[V, E]) =
+      GCons(Monoid[AdjacencyList[V]].combine(x.adj, y.adj))
+  }
+
 }
 
-private[gdget] sealed trait LabelledGraphLike[V, E] extends Graph[LabelledGraph, V, E] {
+private[gdget] sealed trait LabelledGraphLike[V, E] extends Graph[LabelledGraph, V, LabelledEdge[V, E, V]] {
   import LabelledGraph._
+
+  type N[V0, E0] = LabelledNeighbourhood[V0]
+
+  override def size(g: LabelledGraph[V, LabelledEdge[V, E, V]]) = g.size
+
+  override def order(g:LabelledGraph[V, LabelledEdge[V, E, V]]) = g.order
+
+  override def vertices(g: LabelledGraph[V, LabelledEdge[V, E, V]]) = g.vertices
+
+  //TODO: Fix below vvv
+  override def edges(g: LabelledGraph[V, LabelledEdge[V, E, V]]) = g.edges
+
+
+
 }
 
 private[gdget] sealed trait LabelledNeighbourhoodLike[V, E] extends Neighbourhood[LabelledGraph, V, E] {}
 
-private[gdget] sealed trait LabelledEdgeLike[E] extends Edge[E] {}
+private[gdget] sealed trait LabelledEdgeLike[L <: V, R <: V, V, E] extends LEdge[LabelledEdge, L , R, V, E] {
 
-private[gdget] sealed trait LabelledGraphMonoid[V, E] extends Monoid[LabelledGraph[V, E]]
+  override def vertices(e: LabelledEdge[L, E, R]) = (e.source, e.destination)
+
+  override def label(e: LabelledEdge[L, E, R]) = e.label
+
+  override def left(e: LabelledEdge[L, E, R]): L = e.source
+
+  override def right(e: LabelledEdge[L, E, R]): R = e.destination
+
+  //TODO: Use Cats.Eq
+  override def other(e: LabelledEdge[L, E, R], v: V) =
+    if(e.source == v)
+      Option(e.destination)
+    else if(e.destination == v)
+      Option(e.source)
+    else
+      None
+
+}
+

@@ -17,7 +17,6 @@
   */
 package org.gdget
 
-import org.gdget.labelled.Label
 
 import language.higherKinds
 

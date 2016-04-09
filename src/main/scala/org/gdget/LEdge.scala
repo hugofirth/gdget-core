@@ -17,13 +17,36 @@
   */
 package org.gdget
 
+import scala.language.higherKinds
+import scala.reflect.runtime.universe._
+
 /** Description of Class
   *
   * @author hugofirth
   */
-package object collection {
+trait LEdge[E[_ <: V0, _, _ <: V0], L <: V0, R <: V0, V0, Lbl] extends Edge[E[L, Lbl, R]] {
 
-  /** Internal representation of an Adjacency List */
-//  type AdjacencyList[A, B] = Map[A, Set[B]]
+  override type V = V0
 
+  def label(e: E[L, Lbl, R]): Lbl
+
+  override def vertices(e: E[L, Lbl, R]): (L, R)
+
+  override def left(e: E[L, Lbl, R]): L
+
+  override def right(e: E[L, Lbl, R]): R
+}
+
+
+object LEdge {
+
+  implicit class LEdgeOps[E[_ <: V, _, _ <: V], L <: V, R <: V, V, Lbl](e: E[L, Lbl, R])(implicit override val ev: LEdge[E, L, R, V, Lbl]) extends
+    Edge.EdgeOps[E[L, Lbl, R]](e) {
+
+    def label = ev.label(e)
+    override def vertices: (L, R) = ev.vertices(e)
+    override def left: L = ev.left(e)
+    override def right: R = ev.right(e)
+
+  }
 }
