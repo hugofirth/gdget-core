@@ -52,6 +52,8 @@ sealed abstract class LabelledGraph[V, E] {
 
   private[gdget] def adj: AdjacencyList[V]
 
+  implicit def E: LEdge[E]
+
   //TODO: Implement as val and make private?
   def labels: Map[Int, E]
 
@@ -148,6 +150,9 @@ private[gdget] sealed trait LabelledEdgeLike[L <: V, R <: V, V, E] extends LEdge
   override def left(e: LabelledEdge[L, E, R]): L = e.source
 
   override def right(e: LabelledEdge[L, E, R]): R = e.destination
+
+  override def connect(left: L, label: E, right: R): LabelledEdge[L, E, R] = LabelledEdge(left, label, right)
+
 
   //TODO: Use Cats.Eq
   override def other(e: LabelledEdge[L, E, R], v: V) =

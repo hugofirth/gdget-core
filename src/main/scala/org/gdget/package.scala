@@ -17,6 +17,8 @@
   */
 package org
 
+
+
 /** Description of Class
   *
   * @author hugofirth
@@ -29,4 +31,8 @@ package object gdget {
   type Label = Int
 
   type Labellable[A] = A => Int
+
+
+
+
 }

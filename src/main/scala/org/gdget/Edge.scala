@@ -17,6 +17,7 @@
   */
 package org.gdget
 
+import language.{higherKinds, reflectiveCalls}
 
 /** The base TypeClass for defining behaviour for all edges stored in a graph.
   *
@@ -26,31 +27,24 @@ package org.gdget
   * @author hugofirth
   * @since 0.1
   */
-trait Edge[E] extends Any with Serializable {
-
-  /** Each Edge instance must define an V type member, representing the type of vertices being connected */
-  type V
-
-  def vertices(e: E): (V, V)
-
-  def other(e: E, v: V): Option[V]
-
-  def left(e: E): V
-
-  def right(e: E): V
+trait Edge[E[_]] extends LabelledEdge[({ type λ[a, b <: Unit, c <: V0] = E[a]})#λ]  {
+  //TODO: Find way to fix below
+  override def connect[L <: V, R <: V, V, Lbl](left: L, right: R, label: Lbl = ()): E[L]
 }
 
 object Edge {
 
-  type Aux[E0, V0] = Edge[E0] { type V = V0 }
-
   //TODO: Look into inline apply[E] = implicitly[Edge[E]] to make boilerplate better.
 
-  implicit class EdgeOps[E](e: E)(implicit val ev: Edge[E]) {
-    def vertices = ev.vertices(e)
-    def left = ev.left(e)
-    def right = ev.right(e)
-    def other(v: ev.V) = ev.other(e, v)
+  @inline def apply[E[_]: Edge]: Edge[E] = implicitly[Edge[E]]
+
+
+  implicit class EdgeOps[E[_], V](self: E[V])(implicit val ev: Edge[E]) {
+    def vertices = ev.vertices(self)
+    def left = ev.left(self)
+    def right = ev.right(self)
+    def other(v: V) = ev.other(self, v)
+    def connect(left: V, right: V) = ev.connect(left, right)
   }
 
 }

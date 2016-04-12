@@ -25,24 +25,22 @@ import cats._
   *
   * @see [[Edge]]
   * @tparam G The type implementing graph like functionality
-  * @tparam V The vertex type contained in a graph of type G
-  * @tparam E the edge type connecting vertices of type V, in a graph of type G
   * @author hugofirth
   * @since 0.1
   */
-trait Graph[G[_, _], V, E] extends Any with Serializable {
+trait Graph[G[_, _]] extends Any with Serializable {
 
 
   /** type member N represents the closed-neighbourhood of a given vertex v, and should provide a [[Neighbourhood]] instance */
   type N[_, _]
 
   /** Make sure that E and N have instances of the appropriate typeclasses */
-  implicit def E: Edge.Aux[E, V]
-  implicit def N: Neighbourhood[N, V, E]
+//  implicit def E: Edge[E]
+//  implicit def N: Neighbourhood[N, V, E]
 
   //TODO: Look at using Stream, Streaming or Seq to represent this - Iterator is mutable!
-  def vertices(g: G[V, E]): Iterator[V]
-  def edges(g: G[V, E]): Iterator[E]
+  def vertices[V, E[_]: Edge](g: G[V, E[V]]): Iterator[V]
+  def edges[V, E[_]: Edge](g: G[V, E[V]]): Iterator[E[V]]
 
   /**
     *
@@ -53,11 +51,11 @@ trait Graph[G[_, _], V, E] extends Any with Serializable {
     * @param v
     * @return
     */
-  def getVertex(g: G[V, E], v: V): Option[V] = this.findVertex(g)(_ == v)
+  def getVertex[V, E[_]: Edge](g: G[V, E[V]], v: V): Option[V] = this.findVertex(g)(_ == v)
 
-  def getEdge(g: G[V, E], e: E): Option[E] = this.findEdge(g)(_ == e)
+  def getEdge[V, E[_]: Edge](g: G[V, E[V]], e: E[V]): Option[E[V]] = this.findEdge(g)(_ == e)
 
-  def neighbourhood(g: G[V, E], v: V): Option[N[V, E]]
+  def neighbourhood[V, E[_]: Edge](g: G[V, E[V]], v: V): Option[N[V, E[V]]]
 
   /** The order of the graph. This is equal to the number of vertices stored.
     *
@@ -66,7 +64,7 @@ trait Graph[G[_, _], V, E] extends Any with Serializable {
     * @param g
     * @return The number of vertices in the graph
     */
-  def order(g: G[V, E]): Long = this.vertices(g).size
+  def order[V, E[_]: Edge](g: G[V, E[V]]): Long = this.vertices(g).size
 
   /** The size of the graph. This is equal to the number of edges stored.
     *
@@ -74,56 +72,59 @@ trait Graph[G[_, _], V, E] extends Any with Serializable {
     *
     * @return The number of edges in the graph
     */
-  def size(g: G[V, E]): Long = this.edges(g).size
+  def size[V, E[_]: Edge](g: G[V, E[V]]): Long = this.edges(g).size
 
-  def union(lg: G[V, E], rg: G[V, E])(implicit ev: Monoid[G[V,E]]): G[V, E] = Monoid[G[V,E]].combine(lg, rg)
+  def union[V, E[_]: Edge](lg: G[V, E[V]], rg: G[V, E[V]])(implicit ev: Monoid[G[V,E[V]]]): G[V, E[V]] = 
+    Monoid[G[V,E[V]]].combine(lg, rg)
 
   //TODO: Implement unionAll ?
 
-  def findVertex(g: G[V, E])(f: (V) => Boolean): Option[V] = this.vertices(g) find f
+  def findVertex[V, E[_]: Edge](g: G[V, E[V]])(f: (V) => Boolean): Option[V] = this.vertices(g) find f
 
-  def findEdge(g: G[V, E])(f: (E) => Boolean): Option[E] = this.edges(g) find f
+  def findEdge[V, E[_]: Edge](g: G[V, E[V]])(f: (E[V]) => Boolean): Option[E[V]] = this.edges(g) find f
 
-  def plusVertex(g: G[V, E], v: V): G[V, E]
+  def plusVertex[V, E[_]: Edge](g: G[V, E[V]], v: V): G[V, E[V]]
 
-  def minusVertex(g: G[V, E], v: V): G[V, E]
+  def minusVertex[V, E[_]: Edge](g: G[V, E[V]], v: V): G[V, E[V]]
 
-  def plusVertices(g: G[V, E], vs: V*): G[V, E] = vs.foldLeft(g)((graph, v) => plusVertex(graph, v))
+  def plusVertices[V, E[_]: Edge](g: G[V, E[V]], vs: V*): G[V, E[V]] = vs.foldLeft(g)((graph, v) => plusVertex(graph, v))
 
-  def minusVertices(g: G[V, E], vs: V*): G[V, E] = vs.foldLeft(g)((graph, v) => minusVertex(graph, v))
+  def minusVertices[V, E[_]: Edge](g: G[V, E[V]], vs: V*): G[V, E[V]] = vs.foldLeft(g)((graph, v) => minusVertex(graph, v))
 
-  def plusEdge(g: G[V, E], e: E): G[V, E]
+  def plusEdge[V, E[_]: Edge](g: G[V, E[V]], e: E[V]): G[V, E[V]]
 
-  def minusEdge(g: G[V, E], e: E): G[V, E]
+  def minusEdge[V, E[_]: Edge](g: G[V, E[V]], e: E[V]): G[V, E[V]]
 
-  def plusEdges(g: G[V, E], es: E*): G[V, E] = es.foldLeft(g)((graph, e) => plusEdge(graph, e))
+  def plusEdges[V, E[_]: Edge](g: G[V, E[V]], es: E[V]*): G[V, E[V]] = es.foldLeft(g)((graph, e) => plusEdge(graph, e))
 
-  def minusEdges(g: G[V, E], es: E*): G[V, E] = es.foldLeft(g)((graph, e) => minusEdge(graph, e))
+  def minusEdges[V, E[_]: Edge](g: G[V, E[V]], es: E[V]*): G[V, E[V]] = es.foldLeft(g)((graph, e) => minusEdge(graph, e))
 }
 
 object Graph {
+  
+  @inline def apply[G[_, _]: Graph]: Graph[G] = implicitly[Graph[G]]
 
   //TODO: Investigate Machinist for cheap (unboxed) typeclass ops. Or else extend AnyVal
   //Possible alternative to machinist is to have Ops classes not take implicit gEv and have it extend AnyVal.
-  implicit class GraphOps[G[_, _], V, E: Edge](g: G[V, E])(implicit val gEv: Graph[G, V, E]) {
-    def vertices = gEv.vertices(g)
-    def edges = gEv.edges(g)
-    def order = gEv.order(g)
-    def size = gEv.size(g)
-    def getVertex(v: V): Option[V] = gEv.getVertex(g, v)
-    def getEdge(e: E): Option[E] = gEv.getEdge(g, e)
-    def neighbourhood(v: V) = gEv.neighbourhood(g, v)
-    def union(that: G[V, E])(implicit ev: Monoid[G[V, E]]) = gEv.union(g, that)
-    def findVertex(f: (V) => Boolean) = gEv.findVertex(g)(f)
-    def findEdge(f: (E) => Boolean) = gEv.findEdge(g)(f)
-    def plusVertex(v: V) = gEv.plusVertex(g, v)
-    def minusVertex(v: V) = gEv.minusVertex(g, v)
-    def plusVertices(v: V*) = gEv.plusVertices(g, v: _*)
-    def minusVertices(v: V*) = gEv.minusVertices(g, v: _*)
-    def plusEdge(e: E) = gEv.plusEdge(g, e)
-    def minusEdge(e: E) = gEv.minusEdge(g, e)
-    def plusEdges(e: E*) = gEv.plusEdges(g, e: _*)
-    def minusEdges(e: E*) = gEv.minusEdges(g, e: _*)
+  implicit class GraphOps[G[_, _]: Graph, V, E[_]: Edge](g: G[V, E[V]]) {
+    def vertices = Graph[G].vertices(g)
+    def edges = Graph[G].edges(g)
+    def order = Graph[G].order(g)
+    def size = Graph[G].size(g)
+    def getVertex(v: V): Option[V] = Graph[G].getVertex(g, v)
+    def getEdge(e: E[V]): Option[E[V]] = Graph[G].getEdge[V, E](g, e)
+    def neighbourhood(v: V) = Graph[G].neighbourhood(g, v)
+    def union(that: G[V, E[V]])(implicit ev: Monoid[G[V, E[V]]]) = Graph[G].union(g, that)
+    def findVertex(f: (V) => Boolean) = Graph[G].findVertex(g)(f)
+    def findEdge(f: (E[V]) => Boolean) = Graph[G].findEdge(g)(f)
+    def plusVertex(v: V) = Graph[G].plusVertex(g, v)
+    def minusVertex(v: V) = Graph[G].minusVertex(g, v)
+    def plusVertices(v: V*) = Graph[G].plusVertices(g, v: _*)
+    def minusVertices(v: V*) = Graph[G].minusVertices(g, v: _*)
+    def plusEdge(e: E[V]) = Graph[G].plusEdge(g, e)
+    def minusEdge(e: E[V]) = Graph[G].minusEdge(g, e)
+    def plusEdges(e: E[V]*) = Graph[G].plusEdges(g, e: _*)
+    def minusEdges(e: E[V]*) = Graph[G].minusEdges(g, e: _*)
   }
 }
 
