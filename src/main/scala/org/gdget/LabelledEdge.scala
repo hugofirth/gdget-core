@@ -23,47 +23,34 @@ import scala.reflect.runtime.universe._
 /** Description of Class
   *
   *
-  * private trait RightFunctor[F[_,_], X] extends Functor[F[X, ?]] {
-  *   implicit def F: Bifunctor[F]
-  *
-  *   override def map[A, C](fax: F[X, A])(f: A => C): F[X, C] = F.bimap(fax)(identity, f)
-  * }
-  *
-  * private trait UFunctor[F[_,_]] extends Functor[λ[α => F[α, α]]] {
-  *   implicit def F: Bifunctor[F]
-  *
-  *   override def map[A, C](fax: F[A, A])(f: A => C): F[C, C] = F.bimap(fax)(f, f)
-  * }
-  *
-  *
-  * So I'm beginning to think the inheritance goes the way I thought originally: LEdge extends Edge
-  *
   * @author hugofirth
   */
-trait LabelledEdge[E[+_, _, +_]] extends Any with Serializable {
+trait LabelledEdge[E[+_, _], Lbl] extends Any with Serializable {
 
-  def label[L <: V, R <: V, V, Lbl](e: E[L, Lbl, R]): Lbl
+  def label[V](e: E[V, Lbl]): Lbl
 
-  def connect[L <: V, R <: V, V, Lbl](left: L, right: R, label: Lbl): E[L, Lbl, R]
+  def connect[V](left: V, right: V, label: Lbl): E[V, Lbl]
 
-  def vertices[L <: V, R <: V, V, Lbl](e: E[L, Lbl, R]): (L, R)
+  def vertices[V](e: E[V, Lbl]): (V, V)
 
-  def left[L <: V, R <: V, V, Lbl](e: E[L, Lbl, R]): L
+  def left[V](e: E[V, Lbl]): V
 
-  def right[L <: V, R <: V, V, Lbl](e: E[L, Lbl, R]): R
+  def right[V](e: E[V, Lbl]): V
 
-  def other[L <: V, R <: V, V, Lbl](e: E[L, Lbl, R], v: V): Option[V]
+  def other[V](e: E[V, Lbl], v: V): Option[V]
 }
 
 
 object LabelledEdge {
 
-  implicit class LabelledEdgeOps[E[_, _, _], L <: V, R <: V, V, Lbl](e: E[L, Lbl, R])(implicit val ev: LabelledEdge[E]) {
+  @inline def apply[E[_, _], Lbl](implicit ev: LabelledEdge[E, Lbl]): LabelledEdge[E, Lbl] = ev
+  
+  implicit class LabelledEdgeOps[E[_, _], V, Lbl](e: E[V, Lbl])(implicit val ev: LabelledEdge[E, Lbl]) {
 
-    def label = ev.label(e)
-    def vertices = ev.vertices(e)
-    def left = ev.left(e)
-    def right = ev.right(e)
-    def other(v: V) = ev.other(e, v)
+    def label = LabelledEdge[E, Lbl].label(e)
+    def vertices = LabelledEdge[E, Lbl].vertices(e)
+    def left = LabelledEdge[E, Lbl].left(e)
+    def right = LabelledEdge[E, Lbl].right(e)
+    def other(v: V) = LabelledEdge[E, Lbl].other(e, v)
   }
 }

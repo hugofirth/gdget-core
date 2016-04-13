@@ -32,7 +32,4 @@ package object gdget {
 
   type Labellable[A] = A => Int
 
-
-
-
 }

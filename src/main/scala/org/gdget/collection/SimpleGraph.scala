@@ -20,7 +20,7 @@ package org.gdget.collection
 import cats._
 import org.gdget.{Edge, Graph, Neighbourhood}
 
-import scala.language.higherKinds
+import scala.language.{higherKinds, reflectiveCalls}
 
 /** SimpleGraph is an unlabelled, directed graph datastructure. It provides instances of the
   * [[algebra.Monoid]] & [[org.gdget.Graph]] typeclasses.
@@ -115,8 +115,8 @@ object SimpleGraph extends SimpleGraphInstances {
 trait SimpleGraphInstances {
   import SimpleGraph._
 
-  implicit def simpleGraph[V, E[_]: Edge](implicit nEv: Neighbourhood[SimpleGraph.N, V, E]): Graph[SimpleGraph] =
-    new SimpleGraphLike[V] {
+  implicit def simpleGraph[V, E[_]: Edge](implicit nEv: Neighbourhood[SimpleGraph.N]): Graph[SimpleGraph] =
+    new SimpleGraphLike[V, E] {
 
       override implicit def N = nEv
     }
@@ -131,58 +131,62 @@ trait SimpleGraphInstances {
       }
     }
 
-  implicit def tuple2Edge[V0]: Edge[(V0, V0)] = new Edge[(V0, V0)] {
+  implicit def tuple2Edge: Edge[({ type λ[a] = (a, a) })#λ] = new Edge[({ type λ[a] = (a, a) })#λ] {
 
-    override type V = V0
+    override def connect[V](left: V, right: V, label: Unit = ()): (V, V) = (left, right)
 
-    override def vertices(e: (V0, V0)) = e
+    override def left[V](e: (V, V)): V = e._1
 
-    override def left(e: (V0, V0)) = e._1
+    override def right[V](e: (V, V)): V = e._2
 
-    override def right(e: (V0, V0)) = e._2
-
-    //TODO: Use Cats.Eq
-    override def other(e: (V0, V0), v: V0) =
+    override def other[V](e: (V, V), v: V): Option[V] =
       if(e._1 == v)
         Option(e._2)
       else if(e._2 == v)
         Option(e._1)
       else
         None
+
+    override def vertices[V](e: (V, V)) = e
+
   }
 
-  implicit def simpleNeighbourhood[V](implicit eEv: Edge.Aux[(V, V), V]): Neighbourhood[SimpleGraph.N, V, (V, V)] =
-   new Neighbourhood[SimpleGraph.N, V, (V, V)] {
+  implicit def simpleNeighbourhood: Neighbourhood[SimpleGraph.N] =
+   new Neighbourhood[SimpleGraph.N] {
 
-     override implicit def E = eEv
+     override def edges[V, E[_]: Edge](n: SimpleNeighbourhood[V]) =
+       n.neighbours._1.map(Edge[E].connect(_, n.center)).iterator ++
+         n.neighbours._2.map(Edge[E].connect(n.center,_)).iterator
 
-     override def edges(n: SimpleNeighbourhood[V]) =
-       n.neighbours._1.map((_, n.center)).iterator ++ n.neighbours._2.map((n.center,_)).iterator
-
-     override def center(n: SimpleNeighbourhood[V]) = n.center
+     override def center[V, E[_]: Edge](n: SimpleNeighbourhood[V]) = n.center
 
    }
 }
 
-private[gdget] sealed trait SimpleGraphLike[V] extends Graph[SimpleGraph.G, V, (V, V)] {
+private[gdget] sealed trait SimpleGraphLike[V, E[_]] extends Graph[SimpleGraph] {
   import SimpleGraph._
 
-  override type N[V0, E] = SimpleNeighbourhood[V0]
+  override type N[V0, E0] = SimpleNeighbourhood[V0]
 
   //TODO: Use pattern matching to check for NullGraph as a performance optimisation
   //TODO: Investigate Specialization?
 
-  override def size(g: SimpleGraph[V]) = g.size
 
-  override def order(g: SimpleGraph[V]) = g.order
 
-  override def vertices(g: SimpleGraph[V]): Iterator[V] = g.vertices
+//  override def size(g: SimpleGraph[V, E]) = g.size
+//
+//  override def order(g: SimpleGraph[V, E]) = g.order
+//
+//  override def vertices(g: SimpleGraph[V, E]): Iterator[V] = g.vertices
 
-  override def edges(g: SimpleGraph[V]): Iterator[(V, V)] = g.edges
+  //TODO: Look at using Stream, Streaming or Seq to represent this - Iterator is mutable!
+  override def vertices[V, E[_] : Edge](g: SimpleGraph[V, E[V]]): Iterator[V] = ???
 
-  override def plusVertex(g: SimpleGraph[V], v: V): SimpleGraph[V] = GCons(g.adj + (v -> (Set.empty[V], Set.empty[V])))
+  override def edges(g: SimpleGraph[V, E]): Iterator[(V, V)] = g.edges
 
-  override def minusVertex(g: SimpleGraph[V], v: V): SimpleGraph[V] = GCons(g.adj - v)
+  override def plusVertex(g: SimpleGraph[V, E], v: V): SimpleGraph[V, E] = GCons(g.adj + (v -> (Set.empty[V], Set.empty[V])))
+
+  override def minusVertex(g: SimpleGraph[V, E], v: V): SimpleGraph[V, E] = GCons(g.adj - v)
 
   override def plusEdge(g: SimpleGraph.G[V, (V, V)], e: (V, V)): SimpleGraph.G[V, (V, V)] = {
     //We add to edges._2 because convention for neighbourhood tuples is (inEdges, outEdges), whilst convention for Edge

@@ -27,24 +27,23 @@ import language.{higherKinds, reflectiveCalls}
   * @author hugofirth
   * @since 0.1
   */
-trait Edge[E[_]] extends LabelledEdge[({ type λ[a, b <: Unit, c <: V0] = E[a]})#λ]  {
-  //TODO: Find way to fix below
-  override def connect[L <: V, R <: V, V, Lbl](left: L, right: R, label: Lbl = ()): E[L]
+trait Edge[E[+_]] extends LabelledEdge[({ type λ[a, _ <: Unit] = E[a]})#λ, Unit] {
+
+  override def label[V](e: E[V]) = ()
+
+  override def connect[V](left: V, right: V, label: Unit = ()): E[V] 
 }
 
 object Edge {
 
-  //TODO: Look into inline apply[E] = implicitly[Edge[E]] to make boilerplate better.
-
   @inline def apply[E[_]: Edge]: Edge[E] = implicitly[Edge[E]]
 
-
-  implicit class EdgeOps[E[_], V](self: E[V])(implicit val ev: Edge[E]) {
-    def vertices = ev.vertices(self)
-    def left = ev.left(self)
-    def right = ev.right(self)
-    def other(v: V) = ev.other(self, v)
-    def connect(left: V, right: V) = ev.connect(left, right)
+  implicit class EdgeOps[E[_]: Edge, V](self: E[V]) {
+    def vertices = Edge[E].vertices(self)
+    def left = Edge[E].left(self)
+    def right = Edge[E].right(self)
+    def other(v: V) = Edge[E].other(self, v)
+    def connect(left: V, right: V) = Edge[E].connect(left, right)
   }
 
 }

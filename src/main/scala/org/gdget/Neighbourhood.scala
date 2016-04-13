@@ -26,27 +26,22 @@ import language.higherKinds
   * functionality (unlike Monoid and Semigroup for instance) therefore Neighbourhood does not extend Graph.
   *
   * @tparam N The type implementing neighbourhood-like functionality
-  * @tparam V The vertex type contained in a graph of type N
-  * @tparam E the edge type connecting vertices of type V, in a graph of type N
   * @see [[Graph]]
   * @author hugofirth
   */
-trait Neighbourhood[N[_, _], V, E] extends Any with Serializable { self =>
+trait Neighbourhood[N[_, _]] extends Any with Serializable { self =>
 
   /** Make sure that E provides an instance of the Edge typeclass with type member V = V */
-  implicit def E: Edge.Aux[E, V]
+  def degree[V, E[_]: Edge](n: N[V, E[V]]): Long = self.edges(n).size
 
-  def degree(n: N[V, E]): Long = self.edges(n).size
-
-  def center(n: N[V, E]): V
+  def center[V, E[_]: Edge](n: N[V, E[V]]): V
 
   //TODO: look at pattern matching constructor for edge (center |->| v, v |->| center etc...) to increase clarity of this method
   //Should override for performance if neighbours are known directly, otherwise we're going neighbours->edges->neighbours
-  def neighbours(n: N[V, E]): Iterator[V] = {
-    edges(n).map(E.other(_, self.center(n))).flatten
-  }
+  def neighbours[V, E[_]: Edge](n: N[V, E[V]]): Iterator[V] = edges(n).map(Edge[E].other(_, self.center(n))).flatten
 
-  def edges(n: N[V, E]): Iterator[E]
+
+  def edges[V, E[_]: Edge](n: N[V, E[V]]): Iterator[E[V]]
 
   /** Method for returning the "In" edges adjacent to the center vertex of a given neighbourhood.
     *
@@ -58,7 +53,8 @@ trait Neighbourhood[N[_, _], V, E] extends Any with Serializable { self =>
     * @param n The neighbourhood whose directed "In" edges we are looking to return
     * @return The set of edges whose destination vertex equals center(n)
     */
-  def inEdges(n: N[V, E]): Iterator[E] = self.edges(n).filter(E.right(_) == self.center(n))
+  def inEdges[V, E[_]: Edge](n: N[V, E[V]]): Iterator[E[V]] = self.edges(n).filter(Edge[E].right(_) == self.center(n))
+
 
 
   /** Method for returning the "Out" edges adjacent to the center vertex of a given neighbourhood.
@@ -71,14 +67,17 @@ trait Neighbourhood[N[_, _], V, E] extends Any with Serializable { self =>
     * @param n The neighbourhood whose directed "out" edges we are looking to return
     * @return The set of edges whose source vertex equals center(n)
     */
-  def outEdges(n: N[V, E]): Iterator[E] = self.edges(n).filter(E.left(_) == self.center(n))
+  def outEdges[V, E[_]: Edge](n: N[V, E[V]]): Iterator[E[V]] = self.edges(n).filter(Edge[E].left(_) == self.center(n))
+
 }
 
 object Neighbourhood {
 
-  implicit class NeighbourhoodOps[N[_, _], V, E: Edge](n: N[V, E])(implicit nEv: Neighbourhood[N, V, E]) {
-    def edges = nEv.edges(n)
-    def neighbours = nEv.neighbours(n)
-    def degree = nEv.degree(n)
+  @inline def apply[N[_, _]: Neighbourhood]: Neighbourhood[N] = implicitly[Neighbourhood[N]]
+
+  implicit class NeighbourhoodOps[N[_, _]: Neighbourhood, V, E[_]: Edge](n: N[V, E[V]]) {
+    def edges = Neighbourhood[N].edges(n)
+    def neighbours = Neighbourhood[N].neighbours(n)
+    def degree = Neighbourhood[N].degree(n)
   }
 }

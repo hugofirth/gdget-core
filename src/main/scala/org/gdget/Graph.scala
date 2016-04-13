@@ -36,7 +36,7 @@ trait Graph[G[_, _]] extends Any with Serializable {
 
   /** Make sure that E and N have instances of the appropriate typeclasses */
 //  implicit def E: Edge[E]
-//  implicit def N: Neighbourhood[N, V, E]
+  implicit def N: Neighbourhood[N]
 
   //TODO: Look at using Stream, Streaming or Seq to represent this - Iterator is mutable!
   def vertices[V, E[_]: Edge](g: G[V, E[V]]): Iterator[V]
