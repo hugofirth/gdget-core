@@ -25,7 +25,7 @@ import scala.reflect.runtime.universe._
   *
   * @author hugofirth
   */
-trait LabelledEdge[E[+_, _], Lbl] extends Any with Serializable {
+trait LabelledEdge[E[_, _], Lbl] extends Any with Serializable {
 
   def label[V](e: E[V, Lbl]): Lbl
 
@@ -44,7 +44,7 @@ trait LabelledEdge[E[+_, _], Lbl] extends Any with Serializable {
 object LabelledEdge {
 
   @inline def apply[E[_, _], Lbl](implicit ev: LabelledEdge[E, Lbl]): LabelledEdge[E, Lbl] = ev
-  
+
   implicit class LabelledEdgeOps[E[_, _], V, Lbl](e: E[V, Lbl])(implicit val ev: LabelledEdge[E, Lbl]) {
 
     def label = LabelledEdge[E, Lbl].label(e)

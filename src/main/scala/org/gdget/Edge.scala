@@ -27,7 +27,7 @@ import language.{higherKinds, reflectiveCalls}
   * @author hugofirth
   * @since 0.1
   */
-trait Edge[E[+_]] extends LabelledEdge[({ type λ[a, _ <: Unit] = E[a]})#λ, Unit] {
+trait Edge[E[_]] extends LabelledEdge[({ type λ[a, _] = E[a]})#λ, Unit] {
 
   override def label[V](e: E[V]) = ()
 

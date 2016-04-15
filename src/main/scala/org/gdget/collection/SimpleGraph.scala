@@ -38,15 +38,17 @@ sealed abstract class SimpleGraph[V, E[_]] {
 
   private[gdget] def adj: AdjacencyList[V]
 
-  def size: Long
-  def order: Long
+  private[gdget] implicit def E: Edge[E]
+
+  def size: Int
+  def order: Int
 
   def vertices = adj.keys.iterator
 
   def edges = for {
     (v, neighbours) <- adj.toIterator
     in <- neighbours._1
-  } yield Edge[E].connect(in, v)
+  } yield E.connect(in, v)
 
 }
 
@@ -66,19 +68,18 @@ object SimpleGraph extends SimpleGraphInstances {
 
   type AdjacencyList[V] = Map[V, (Set[V], Set[V])]
 
-  /** Aliases allow SimpleGraph to "pretend" to conform to structure expected in Graph and Neighbourhood typeclasses
-    * despite E being fixed as (V, V) */
+  /** Alias allows SimpleNeighbourhood to "pretend" to conform to structure expected in the Neighbourhood typeclass */
   //TODO: look into correct type bounds on E, because at the moment E is just dropped / ignored - which is icky
   //Re the above ^ type bounds like this make the compiler have a panic attack because they are stricter bounds than are
   // declared in the Neighbourhood and Graph typeclasses. TODO: fix the bounds in Neighbourhood and Graph typeclasses.
-  type N[V, E[_]] = SimpleNeighbourhood[V]
+  type N[V, E] = SimpleNeighbourhood[V]
 
   //TODO: Look at ScalaGraph for shared companion objects
   //TODO: Look at Cats and decide which typeclasses all Graphs should provide instances for?
 
-  def empty[V, E[_]]: SimpleGraph[V, E] = NullGraph[V, E]
+  def empty[V, E[_]: Edge]: SimpleGraph[V, E] = NullGraph[V, E]
 
-  final def apply[E[_]: Edge, V](es: E[V]*): SimpleGraph[V, E] = {
+  final def apply[V, E[_]: Edge](es: E[V]*): SimpleGraph[V, E] = {
     //TODO: Clean up (Neighbours Case class will help) and do in 1 pass
     val repr = es.foldLeft(Map.empty[V, (Set[V], Set[V])]) { (adj,e) =>
       val outAdj = adj.get(Edge[E].left(e)).fold(adj + (Edge[E].left(e) -> (Set.empty[V], Set(Edge[E].right(e))))) {
@@ -93,22 +94,26 @@ object SimpleGraph extends SimpleGraphInstances {
 
   //TODO: Create conversion methods fromList, fromSet etc.... Maybe extract to a GraphCompanion?
 
-  private[gdget] final case class GCons[V, E[_]: Edge](adj: AdjacencyList[V]) extends SimpleGraph[V, E] {
+  private[gdget] final case class GCons[V, E[_]](adj: AdjacencyList[V])(implicit val E: Edge[E]) extends SimpleGraph[V, E] {
 
-    override lazy val size: Long = vertices.size
-    override lazy val order: Long = edges.size
+    lazy val size: Long = vertices.size
+    lazy val order: Long = edges.size
   }
 
-  private[gdget] case object NullGraph extends SimpleGraph[Nothing, Nothing] {
-    val size = 0L
-    val order = 0L
+  private[gdget] case object NullGraph extends SimpleGraph[Nothing, ({ type λ[a] = (Nothing, Nothing)})#λ] {
 
-    override private[gdget] val adj: AdjacencyList[Nothing] = Map.empty[Nothing, (Set[Nothing], Set[Nothing])]
+    type EA[a] = (Nothing, Nothing)
 
-    //TODO: Find out what this unapply is doing (lifted verbatim from Scalaz Map code)
-    def unapply[V, E[_]](g: SimpleGraph[V, E]): Boolean = g eq this
+    private[gdget] implicit def E = Edge[EA]
 
-    def apply[V, E[_]]: SimpleGraph[V, E] = this.asInstanceOf[SimpleGraph[V, E]]
+    val size = 0
+    val order = 0
+
+    private[gdget] val adj: AdjacencyList[Nothing] = Map.empty[Nothing, (Set[Nothing], Set[Nothing])]
+
+    def unapply[V, E[_]: Edge](g: SimpleGraph[V, E]): Boolean = g eq this
+
+    def apply[V, E[_]](implicit eEv: Edge[E]): SimpleGraph[V, E] = this.asInstanceOf[SimpleGraph[V, E]]
   }
 }
 
@@ -116,7 +121,7 @@ trait SimpleGraphInstances {
   import SimpleGraph._
 
   implicit def simpleGraph[V, E[_]: Edge](implicit nEv: Neighbourhood[SimpleGraph.N]): Graph[SimpleGraph] =
-    new SimpleGraphLike[V, E] {
+    new SimpleGraphLike {
 
       override implicit def N = nEv
     }
@@ -131,91 +136,68 @@ trait SimpleGraphInstances {
       }
     }
 
-  implicit def tuple2Edge: Edge[({ type λ[a] = (a, a) })#λ] = new Edge[({ type λ[a] = (a, a) })#λ] {
-
-    override def connect[V](left: V, right: V, label: Unit = ()): (V, V) = (left, right)
-
-    override def left[V](e: (V, V)): V = e._1
-
-    override def right[V](e: (V, V)): V = e._2
-
-    override def other[V](e: (V, V), v: V): Option[V] =
-      if(e._1 == v)
-        Option(e._2)
-      else if(e._2 == v)
-        Option(e._1)
-      else
-        None
-
-    override def vertices[V](e: (V, V)) = e
-
-  }
-
   implicit def simpleNeighbourhood: Neighbourhood[SimpleGraph.N] =
    new Neighbourhood[SimpleGraph.N] {
 
-     override def edges[V, E[_]: Edge](n: SimpleNeighbourhood[V]) =
+     override def edges[V, E[_]: Edge](n: SimpleGraph.N[V, E[V]]) =
        n.neighbours._1.map(Edge[E].connect(_, n.center)).iterator ++
          n.neighbours._2.map(Edge[E].connect(n.center,_)).iterator
 
-     override def center[V, E[_]: Edge](n: SimpleNeighbourhood[V]) = n.center
+     override def center[V, E[_]: Edge](n: SimpleGraph.N[V, E[V]]) = n.center
 
    }
 }
 
-private[gdget] sealed trait SimpleGraphLike[V, E[_]] extends Graph[SimpleGraph] {
+private[gdget] sealed trait SimpleGraphLike extends Graph[SimpleGraph] {
   import SimpleGraph._
 
-  override type N[V0, E0] = SimpleNeighbourhood[V0]
+  override type N[V, E] = SimpleGraph.N[V, E]
 
   //TODO: Use pattern matching to check for NullGraph as a performance optimisation
   //TODO: Investigate Specialization?
-
-
-
-//  override def size(g: SimpleGraph[V, E]) = g.size
-//
-//  override def order(g: SimpleGraph[V, E]) = g.order
-//
-//  override def vertices(g: SimpleGraph[V, E]): Iterator[V] = g.vertices
-
   //TODO: Look at using Stream, Streaming or Seq to represent this - Iterator is mutable!
-  override def vertices[V, E[_] : Edge](g: SimpleGraph[V, E[V]]): Iterator[V] = ???
+  override def vertices[V, E[_] : Edge](g: SimpleGraph[V, E]): Iterator[V] = g.vertices
 
-  override def edges(g: SimpleGraph[V, E]): Iterator[(V, V)] = g.edges
+  override def edges[V, E[_] : Edge](g: SimpleGraph[V, E]): Iterator[E[V]] = g.edges
 
-  override def plusVertex(g: SimpleGraph[V, E], v: V): SimpleGraph[V, E] = GCons(g.adj + (v -> (Set.empty[V], Set.empty[V])))
+  override def plusVertex[V, E[_] : Edge](g: SimpleGraph[V, E], v: V): SimpleGraph[V, E] = {
+    //TODO: Make Singleton Graph type
+    g match {
+      case NullGraph => GCons(Map(v -> (Set.empty[V], Set.empty[V])))
+      case GCons(adj) => GCons(adj + (v -> (Set.empty[V], Set.empty[V])))
+    }
+  }
+//    GCons(g.adj + (v -> (Set.empty[V], Set.empty[V])))
 
-  override def minusVertex(g: SimpleGraph[V, E], v: V): SimpleGraph[V, E] = GCons(g.adj - v)
+  override def minusVertex[V, E[_] : Edge](g: SimpleGraph[V, E], v: V): SimpleGraph[V, E] = GCons(g.adj - v)
 
-  override def plusEdge(g: SimpleGraph.G[V, (V, V)], e: (V, V)): SimpleGraph.G[V, (V, V)] = {
+  override def plusEdge[V, E[_] : Edge](g: SimpleGraph[V, E], e: E[V]): SimpleGraph[V, E] = {
     //We add to edges._2 because convention for neighbourhood tuples is (inEdges, outEdges), whilst convention for Edge
     //  types is that the left-hand vertex is the source
-    val dAdj = g.adj.get(E.left(e)).fold(g.adj + ( E.left(e) -> (Set.empty[V],Set(E.right(e))) )) { edges =>
-      g.adj.updated(E.left(e), edges.copy(_2 = edges._2 + E.right(e)))
+    val dAdj = g.adj.get(Edge[E].left(e)).fold(g.adj + ( Edge[E].left(e) -> (Set.empty[V],Set(Edge[E].right(e))) )) { edges =>
+      g.adj.updated(Edge[E].left(e), edges.copy(_2 = edges._2 + Edge[E].right(e)))
     }
 
     //We add to edges._1 because convention for neighbourhood tuples is (inEdges, outEdges), whilst convention for Edge
     //  types is that the right-hand vertex is the destination
-    val ddAdj = dAdj.get(E.right(e)).fold(dAdj + (E.right(e) -> (Set(E.left(e)),Set.empty[V]) )) { edges =>
-      dAdj.updated(E.right(e), edges.copy(_1 = edges._1 + E.left(e)))
+    val ddAdj = dAdj.get(Edge[E].right(e)).fold(dAdj + (Edge[E].right(e) -> (Set(Edge[E].left(e)),Set.empty[V]) )) { edges =>
+      dAdj.updated(Edge[E].right(e), edges.copy(_1 = edges._1 + Edge[E].left(e)))
     }
     GCons(ddAdj)
   }
 
-  override def minusEdge(g: SimpleGraph.G[V, (V, V)], e: (V, V)): SimpleGraph.G[V, (V, V)] = {
+  override def minusEdge[V, E[_] : Edge](g: SimpleGraph[V, E], e: E[V]): SimpleGraph[V, E] = {
     //This does check both end of an edge before removing, instead removing as they go. This is fine because removing an
     //  element from a collection where it does not exist returns the same collection.
-    val dAdj = g.adj.get(E.left(e)).fold(g.adj)(edges => g.adj.updated(E.left(e), edges.copy(_2 = edges._2 - E.right(e))))
-    val ddAdj = dAdj.get(E.right(e)).fold(dAdj)(edges => dAdj.updated(E.left(e), edges.copy(_1 = edges._1 - E.left(e))))
+    val dAdj = g.adj.get(Edge[E].left(e)).fold(g.adj) { edges =>
+      g.adj.updated(Edge[E].left(e), edges.copy(_2 = edges._2 - Edge[E].right(e)))
+    }
+    val ddAdj = dAdj.get(Edge[E].right(e)).fold(dAdj) { edges =>
+      dAdj.updated(Edge[E].left(e), edges.copy(_1 = edges._1 - Edge[E].left(e)))
+    }
     GCons(ddAdj)
   }
 
-  override def neighbourhood(g: SimpleGraph[V], v: V) = g.adj.get(v).map(SimpleNeighbourhood(v, _))
+  override def neighbourhood[V, E[_] : Edge](g: SimpleGraph[V, E], v: V) = g.adj.get(v).map(SimpleNeighbourhood(v, _))
 }
 
-private[gdget] sealed trait SimpleNeighbourhoodLike[V] extends Neighbourhood[SimpleGraph.N, V, (V, V)] {}
-
-private[gdget] sealed trait Tuple2Edge[V] extends Edge[(V, V)] {}
-
-private[gdget] sealed trait SimpleGraphMonoid[V] extends Monoid[SimpleGraph[V]] {}
