@@ -28,8 +28,6 @@ package object gdget {
 
 
   /** Representation of a Label, Int rather than Byte, because BitSet < Set[Byte] */
-  type Label = Int
-
-  type Labellable[A] = A => Int
+  type Label[A] = A => Int
 
 }

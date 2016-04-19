@@ -17,15 +17,15 @@
   */
 package org.gdget
 
+import scala.annotation.implicitNotFound
 import scala.language.higherKinds
-import scala.reflect.runtime.universe._
 
 /** Description of Class
   *
-  *
   * @author hugofirth
   */
-trait LabelledEdge[E[_, _], Lbl] extends Any with Serializable {
+@implicitNotFound("No member of type class LabelledEge found for types ${E} and ${Lbl}")
+trait LabelledEdge[E[_, +_], Lbl] extends Any with Serializable {
 
   def label[V](e: E[V, Lbl]): Lbl
 
@@ -43,10 +43,10 @@ trait LabelledEdge[E[_, _], Lbl] extends Any with Serializable {
 
 object LabelledEdge {
 
-  @inline def apply[E[_, _], Lbl](implicit ev: LabelledEdge[E, Lbl]): LabelledEdge[E, Lbl] = ev
+  @inline def apply[E[_, +_], Lbl](implicit ev: LabelledEdge[E, Lbl]): LabelledEdge[E, Lbl] = ev
 
-  implicit class LabelledEdgeOps[E[_, _], V, Lbl](e: E[V, Lbl])(implicit val ev: LabelledEdge[E, Lbl]) {
-
+  implicit class LabelledEdgeOps[E[_, +_], V, Lbl](e: E[V, Lbl])(implicit val ev: LabelledEdge[E, Lbl]) {
+    //TODO: Work out inheritance heirarchy for LEdgeOps and EdgeOps which means there are no ambiguous implicits
     def label = LabelledEdge[E, Lbl].label(e)
     def vertices = LabelledEdge[E, Lbl].vertices(e)
     def left = LabelledEdge[E, Lbl].left(e)

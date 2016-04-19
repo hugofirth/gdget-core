@@ -18,6 +18,7 @@
 package org.gdget
 
 import language.{higherKinds, reflectiveCalls}
+import scala.annotation.implicitNotFound
 
 /** The base TypeClass for defining behaviour for all edges stored in a graph.
   *
@@ -27,7 +28,8 @@ import language.{higherKinds, reflectiveCalls}
   * @author hugofirth
   * @since 0.1
   */
-trait Edge[E[_]] extends LabelledEdge[({ type λ[a, _] = E[a]})#λ, Unit] {
+@implicitNotFound("No member of type class Edge found for type ${E}")
+trait Edge[E[_]] extends LabelledEdge[({ type λ[a, +_] = E[a]})#λ, Unit] {
 
   override def label[V](e: E[V]) = ()
 
@@ -38,12 +40,12 @@ object Edge {
 
   @inline def apply[E[_]: Edge]: Edge[E] = implicitly[Edge[E]]
 
-  implicit class EdgeOps[E[_]: Edge, V](self: E[V]) {
-    def vertices = Edge[E].vertices(self)
-    def left = Edge[E].left(self)
-    def right = Edge[E].right(self)
-    def other(v: V) = Edge[E].other(self, v)
-    def connect(left: V, right: V) = Edge[E].connect(left, right)
+  implicit class EdgeOps[E[_], V](val self: E[V]) extends AnyVal {
+    def vertices(implicit ev: Edge[E]) = ev.vertices(self)
+    def left(implicit ev: Edge[E]) = ev.left(self)
+    def right(implicit ev: Edge[E]) = ev.right(self)
+    def other(v: V)(implicit ev: Edge[E]) = ev.other(self, v)
+    def connect(left: V, right: V)(implicit ev: Edge[E]) = ev.connect(left, right)
   }
 
 }

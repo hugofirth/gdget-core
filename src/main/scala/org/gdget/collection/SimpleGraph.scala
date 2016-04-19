@@ -32,7 +32,7 @@ import scala.language.{higherKinds, reflectiveCalls}
   * @see [[SimpleNeighbourhood]]
   * @author hugofirth
   */
-sealed abstract class SimpleGraph[V, E[_]] {
+sealed trait SimpleGraph[V, E[_]] {
 
   import SimpleGraph._
 
@@ -96,8 +96,8 @@ object SimpleGraph extends SimpleGraphInstances {
 
   private[gdget] final case class GCons[V, E[_]](adj: AdjacencyList[V])(implicit val E: Edge[E]) extends SimpleGraph[V, E] {
 
-    lazy val size: Long = vertices.size
-    lazy val order: Long = edges.size
+    lazy val size = vertices.size
+    lazy val order = edges.size
   }
 
   private[gdget] case object NullGraph extends SimpleGraph[Nothing, ({ type λ[a] = (Nothing, Nothing)})#λ] {
@@ -163,19 +163,24 @@ private[gdget] sealed trait SimpleGraphLike extends Graph[SimpleGraph] {
   override def plusVertex[V, E[_] : Edge](g: SimpleGraph[V, E], v: V): SimpleGraph[V, E] = {
     //TODO: Make Singleton Graph type
     g match {
-      case NullGraph => GCons(Map(v -> (Set.empty[V], Set.empty[V])))
-      case GCons(adj) => GCons(adj + (v -> (Set.empty[V], Set.empty[V])))
+      case NullGraph() => GCons(Map(v -> (Set.empty[V], Set.empty[V])))
+      case GCons(adj) => GCons(adj + (v -> adj.getOrElse(v, (Set.empty[V], Set.empty[V]))))
     }
   }
-//    GCons(g.adj + (v -> (Set.empty[V], Set.empty[V])))
 
-  override def minusVertex[V, E[_] : Edge](g: SimpleGraph[V, E], v: V): SimpleGraph[V, E] = GCons(g.adj - v)
+  override def minusVertex[V, E[_] : Edge](g: SimpleGraph[V, E], v: V): SimpleGraph[V, E] = {
+    g match {
+      case NullGraph() => NullGraph[V, E]
+      case GCons(adj) if g.size <= 1 => NullGraph[V, E]
+      case GCons(adj) => GCons(adj - v)
+    }
+  }
 
   override def plusEdge[V, E[_] : Edge](g: SimpleGraph[V, E], e: E[V]): SimpleGraph[V, E] = {
     //We add to edges._2 because convention for neighbourhood tuples is (inEdges, outEdges), whilst convention for Edge
     //  types is that the left-hand vertex is the source
     val dAdj = g.adj.get(Edge[E].left(e)).fold(g.adj + ( Edge[E].left(e) -> (Set.empty[V],Set(Edge[E].right(e))) )) { edges =>
-      g.adj.updated(Edge[E].left(e), edges.copy(_2 = edges._2 + Edge[E].right(e)))
+      g.adj + (Edge[E].left(e) -> edges.copy(_2 = edges._2 + Edge[E].right(e)))
     }
 
     //We add to edges._1 because convention for neighbourhood tuples is (inEdges, outEdges), whilst convention for Edge

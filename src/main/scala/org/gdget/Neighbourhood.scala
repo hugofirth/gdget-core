@@ -32,7 +32,7 @@ import language.higherKinds
 trait Neighbourhood[N[_, _]] extends Any with Serializable { self =>
 
   /** Make sure that E provides an instance of the Edge typeclass with type member V = V */
-  def degree[V, E[_]: Edge](n: N[V, E[V]]): Long = self.edges(n).size
+  def degree[V, E[_]: Edge](n: N[V, E[V]]): Int = self.edges(n).size
 
   def center[V, E[_]: Edge](n: N[V, E[V]]): V
 
