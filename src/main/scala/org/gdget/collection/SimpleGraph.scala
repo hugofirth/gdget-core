@@ -18,7 +18,7 @@
 package org.gdget.collection
 
 import cats._
-import org.gdget.{Edge, Graph, Neighbourhood}
+import org.gdget.{Edge, Graph, LabelledEdge, Neighbourhood}
 
 import scala.language.{higherKinds, reflectiveCalls}
 
@@ -72,7 +72,7 @@ object SimpleGraph extends SimpleGraphInstances {
   //TODO: look into correct type bounds on E, because at the moment E is just dropped / ignored - which is icky
   //Re the above ^ type bounds like this make the compiler have a panic attack because they are stricter bounds than are
   // declared in the Neighbourhood and Graph typeclasses. TODO: fix the bounds in Neighbourhood and Graph typeclasses.
-  type N[V, E] = SimpleNeighbourhood[V]
+  type NA[V, _] = SimpleNeighbourhood[V]
 
   //TODO: Look at ScalaGraph for shared companion objects
   //TODO: Look at Cats and decide which typeclasses all Graphs should provide instances for?
@@ -120,7 +120,7 @@ object SimpleGraph extends SimpleGraphInstances {
 trait SimpleGraphInstances {
   import SimpleGraph._
 
-  implicit def simpleGraph[V, E[_]: Edge](implicit nEv: Neighbourhood[SimpleGraph.N]): Graph[SimpleGraph] =
+  implicit def simpleGraph[V, E[_]: Edge](implicit nEv: Neighbourhood[SimpleGraph.NA, Unit]): Graph[SimpleGraph] =
     new SimpleGraphLike {
 
       override implicit def N = nEv
@@ -136,22 +136,27 @@ trait SimpleGraphInstances {
       }
     }
 
-  implicit def simpleNeighbourhood: Neighbourhood[SimpleGraph.N] =
-   new Neighbourhood[SimpleGraph.N] {
+  implicit def simpleNeighbourhood: Neighbourhood[SimpleNeighbourhood] =
+    new Neighbourhood[SimpleNeighbourhood] {
 
-     override def edges[V, E[_]: Edge](n: SimpleGraph.N[V, E[V]]) =
-       n.neighbours._1.map(Edge[E].connect(_, n.center)).iterator ++
-         n.neighbours._2.map(Edge[E].connect(n.center,_)).iterator
+      type NA[a, _] = SimpleNeighbourhood[a]
 
-     override def center[V, E[_]: Edge](n: SimpleGraph.N[V, E[V]]) = n.center
+//      override def edges[V, E[_, + _]](n: NA[V, Unit])(implicit ev: LabelledEdge[E, Unit]): Iterator[E[V, Unit]] =
+//        n.neighbours._1.map(ev.connect(_, n.center, ())).iterator ++ n.neighbours._2.map(ev.connect(n.center, _, ())).iterator
+//
+//      override def center[V](n: NA[V, Unit]): V = n.center
+      override def center[V](n: SimpleNeighbourhood[V]): V = n.center
 
-   }
+      override def edges[V, E[_, + _], L](n: SimpleNeighbourhood[V])(implicit ev: LabelledEdge[E, L]): Iterator[E[V, L]] =
+        n.neighbours._1.map(ev.connect(_, n.center, ())).iterator ++ n.neighbours._2.map(ev.connect(n.center, _, ())).iterator
+    }
+
 }
 
 private[gdget] sealed trait SimpleGraphLike extends Graph[SimpleGraph] {
   import SimpleGraph._
 
-  override type N[V, E] = SimpleGraph.N[V, E]
+  override type N[V, _] = SimpleGraph.NA[V, _]
 
   //TODO: Use pattern matching to check for NullGraph as a performance optimisation
   //TODO: Investigate Specialization?

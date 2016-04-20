@@ -68,11 +68,11 @@ object LabelledGraph {
     override lazy val order = edges.size
   }
 
-  private[gdget] case object NullGraph extends LabelledGraph[Nothing, ({ type λ[a, +_] = (Nothing, Nothing)})#λ, Nothing] {
+  private[gdget] case object NullGraph extends LabelledGraph[Nothing, ({ type λ[a, +_] = (Nothing, Nothing)})#λ, Unit] {
 
     type EA[a, +_] = (Nothing, Nothing)
 
-    implicit def E = LabelledEdge[EA, Nothing]
+    implicit def E = LabelledEdge[EA, Unit]
 
     val size = 0
     val order = 0
