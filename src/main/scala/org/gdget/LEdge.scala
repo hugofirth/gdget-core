@@ -18,39 +18,39 @@
 package org.gdget
 
 import scala.annotation.implicitNotFound
-import scala.language.higherKinds
+import scala.language.{higherKinds, reflectiveCalls}
 
 /** Description of Class
   *
   * @author hugofirth
   */
-@implicitNotFound("No member of type class LabelledEge found for types ${E} and ${Lbl}")
-trait LabelledEdge[E[_, +_], Lbl] extends Any with Serializable {
+@implicitNotFound("No member of type class LEdge found for types ${E} and ${L}")
+trait LEdge[E[_, +_], L] extends Any with Serializable  {
 
-  def label[V](e: E[V, Lbl]): Lbl
+  def label[V](e: E[V, L]): L
 
-  def connect[V](left: V, right: V, label: Lbl): E[V, Lbl]
+  def connect[V](left: V, right: V, label: L): E[V, L]
 
-  def vertices[V](e: E[V, Lbl]): (V, V)
+  def vertices[V](e: E[V, L]): (V, V)
 
-  def left[V](e: E[V, Lbl]): V
+  def left[V](e: E[V, L]): V
 
-  def right[V](e: E[V, Lbl]): V
+  def right[V](e: E[V, L]): V
 
-  def other[V](e: E[V, Lbl], v: V): Option[V]
+  def other[V](e: E[V, L], v: V): Option[V]
 }
 
 
-object LabelledEdge {
+object LEdge {
 
-  @inline def apply[E[_, +_], Lbl](implicit ev: LabelledEdge[E, Lbl]): LabelledEdge[E, Lbl] = ev
+  @inline def apply[E[_, +_], L](implicit ev: LEdge[E, L]): LEdge[E, L] = ev
 
-  implicit class LabelledEdgeOps[E[_, +_], V, Lbl](e: E[V, Lbl])(implicit val ev: LabelledEdge[E, Lbl]) {
+  implicit class LEdgeOps[E[_, +_], V, L](e: E[V, L])(implicit val ev: LEdge[E, L]) {
     //TODO: Work out inheritance heirarchy for LEdgeOps and EdgeOps which means there are no ambiguous implicits
-    def label = LabelledEdge[E, Lbl].label(e)
-    def vertices = LabelledEdge[E, Lbl].vertices(e)
-    def left = LabelledEdge[E, Lbl].left(e)
-    def right = LabelledEdge[E, Lbl].right(e)
-    def other(v: V) = LabelledEdge[E, Lbl].other(e, v)
+    def label = LEdge[E, L].label(e)
+    def vertices = LEdge[E, L].vertices(e)
+    def left = LEdge[E, L].left(e)
+    def right = LEdge[E, L].right(e)
+    def other(v: V) = LEdge[E, L].other(e, v)
   }
 }

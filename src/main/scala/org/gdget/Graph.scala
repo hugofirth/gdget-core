@@ -35,10 +35,10 @@ trait Graph[G[_, _[_]]] extends Any with Serializable {
 
 
   /** type member N represents the closed-neighbourhood of a given vertex v, and should provide a [[Neighbourhood]] instance */
-  type N[_, _, _]
+  type N[_, _]
 
   /** Make sure that N has an instance of the appropriate typeclass */
-  implicit def N[L]: Neighbourhood[N, L]
+  implicit def N: Neighbourhood[N, Unit]
 
   //TODO: Look at using Stream, Streaming or Seq to represent this - Iterator is mutable!
   def vertices[V, E[_]: Edge](g: G[V, E]): Iterator[V]
