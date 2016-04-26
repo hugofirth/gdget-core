@@ -1,4 +1,4 @@
-import org.gdget.collection._
+import org.gdget.data._
 import org.gdget.std.all._
 
 val a = Map(

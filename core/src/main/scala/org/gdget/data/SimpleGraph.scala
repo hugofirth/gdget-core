@@ -15,10 +15,10 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-package org.gdget.collection
+package org.gdget.data
 
 import cats._
-import org.gdget.{Edge, Graph, LEdge, Neighbourhood}
+import org.gdget._
 
 import scala.language.{higherKinds, reflectiveCalls}
 
@@ -134,6 +134,7 @@ trait SimpleGraphInstances {
   implicit def simpleNeighbourhood: Neighbourhood[SimpleNeighbourhood, Unit] =
     new Neighbourhood[SimpleNeighbourhood, Unit] {
 
+      //TODO: Create LNeighbourhood => Neighbourhood hierarchy
       override def center[V, E[_, + _]](n: SimpleNeighbourhood[V, E[V, Unit]]): V = n.center
 
 
@@ -147,7 +148,6 @@ private[gdget] sealed trait SimpleGraphLike extends Graph[SimpleGraph] {
   import SimpleGraph._
 
   override type N[V, E] = SimpleNeighbourhood[V, E]
-
 
   //TODO: Use pattern matching to check for NullGraph as a performance optimisation
   //TODO: Investigate Specialization?
@@ -200,6 +200,21 @@ private[gdget] sealed trait SimpleGraphLike extends Graph[SimpleGraph] {
   }
 
   override def neighbourhood[V, E[_] : Edge](g: SimpleGraph[V, E], v: V) = g.adj.get(v).map(SimpleNeighbourhood(v, _))
+
+  /**
+    * Example query:
+    *
+    * val v = g.collect { case Person(a) => Person(a) }
+    * for {
+    *   n <- g.neighbourhood(v)
+    *   edges <- n.edges
+    *   likes <- edges.collect { case Like(a) => Like(a) }
+    *   l <- likes
+    *
+    * }
+    *
+    * g.neighbourhood(v).fold(Set.empty[(V, V)])(_.edges).
+    */
 
 }
 

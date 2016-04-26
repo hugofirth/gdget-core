@@ -15,19 +15,17 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-package org
+package org.gdget
 
-
+import cats.free.Free
 
 /** Description of Class
   *
   * @author hugofirth
   */
-package object gdget {
+package object data {
 
-
-
-  /** Representation of a Label, Int rather than Byte, because BitSet < Set[Byte] */
-  type Label[A] = A => Int
+  /** [[cats.free.Free]] type for Graph Queries based upon QueryA ADT */
+  type Query[A] = Free[QueryA, A]
 
 }

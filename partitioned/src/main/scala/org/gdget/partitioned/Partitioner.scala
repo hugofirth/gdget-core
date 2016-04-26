@@ -1,4 +1,4 @@
-/** gdget-core
+/** gdget
   *
   * Copyright (c) 2016 Hugo Firth
   * Email: <me@hugofirth.com/>
@@ -15,15 +15,12 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-package org.gdget
+package org.gdget.partitioned
 
 /** Description of Class
   *
   * @author hugofirth
   */
-package object collection {
-
-  /** Internal representation of an Adjacency List */
-//  type AdjacencyList[A, B] = Map[A, Set[B]]
+trait Partitioner {
 
 }

@@ -15,7 +15,7 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-package org.gdget.collection.mutable
+package org.gdget.data.mutable
 
 import scala.annotation.tailrec
 import scala.collection.generic.CanBuildFrom
@@ -127,7 +127,7 @@ object TrieMap {
   }
 }
 
-/** A trait for mutable [[org.gdget.collection.mutable.TrieMap]]s with multiple values assigned to a single prefix.
+/** A trait for mutable [[org.gdget.data.mutable.TrieMap]]s with multiple values assigned to a single prefix.
   *
   *  This trait is typically used as a mixin. It turns TrieMaps which map `A` to `Set[B]` objects into multimaps that
   *  map `A` to `B` objects.
