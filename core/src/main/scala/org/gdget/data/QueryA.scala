@@ -17,7 +17,9 @@
   */
 package org.gdget.data
 
+import language.higherKinds
 import cats.free.Free.liftF
+import org.gdget.{LEdge, Path}
 
 /** The ADT representing a basic grammar for read-only queries over collection types which provide [[org.gdget.Graph]]
   * instances.
@@ -25,17 +27,27 @@ import cats.free.Free.liftF
   * @author hugofirth
   */
 sealed trait QueryA[A]
-//Get Vertex
-//WithEdgeFrom
-//WithEdgeTo
+//TODO: Have getMatch take a Path, not a pattern graph, and have Path have a deconstructor (unapply), so that I can
+//  get at individual elements of the path inside the for comprehension of the query.
+case class Get[V](vertex: V) extends QueryA[List[V]]
 
-case class GetMatch[T](patternGraph: T) extends QueryA[List[T]]
-case class Where[T](filter: T => Boolean) extends QueryA[List[T]]
+case class WithEdge[V, E[_, _], L](vertices: List[V], edge: E[V, L])(implicit ev: LEdge[E, L])
+  extends QueryA[List[Vector[E[V, L]]]]
+
+case class WithInNeighbour[V](vertices: List[V], in: V) extends QueryA[List[Vector[V]]]
+
+case class WithOutNeighbour[V](vertices: List[V], out: V) extends QueryA[List[Vector[V]]]
 
 object Query {
 
-  def getMatch[T](patternGraph: T): Query[List[T]] = liftF[QueryA, List[T]](GetMatch[T](patternGraph))
+  def get[V](vertex: V): Query[List[V]] = liftF[QueryA, List[V]](Get(vertex))
 
-  def where[T](filter: T => Boolean): Query[List[T]] = liftF[QueryA, List[T]](Where[T](filter))
+  def withEdge[V, E[_, _], L](vertices: List[V], edge: E[V, L])(implicit ev: LEdge[E, L]): Query[List[Vector[E[V, L]]]] =
+    liftF[QueryA, List[Vector[E[V, L]]]](WithEdge(vertices, edge))
 
+  def withInNeighbour[V](vertices: List[V], in: V): Query[List[Vector[V]]] =
+    liftF[QueryA, List[Vector[V]]](WithInNeighbour(vertices, in))
+
+  def withOutNeighbour[V](vertices: List[V], out: V): Query[List[Vector[V]]] =
+    liftF[QueryA, List[Vector[V]]](WithInNeighbour(vertices, out))
 }

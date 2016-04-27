@@ -29,4 +29,6 @@ package object gdget {
   type Label[A] = A => Int
 
   type HPair[+A] = Tuple2[A, A]
+
+  type Path[A] = Vector[A]
 }

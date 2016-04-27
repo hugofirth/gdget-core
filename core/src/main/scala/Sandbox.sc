@@ -1,5 +1,7 @@
+import org.gdget.Graph
 import org.gdget.data._
 import org.gdget.std.all._
+import language.higherKinds
 
 val a = Map(
   1 -> (Set(2,3), Set(4,5,6)),
@@ -24,21 +26,26 @@ val b = SimpleGraph[Int, E](
   5 -> 6,
   6 -> 3
 )
-//
-//import cats._
-//import cats.std.all._
-//import cats.syntax.eq._
-//
-//implicit def tuple2Eq[A: Eq, B: Eq]: Eq[(A, B)] = new Eq[(A, B)] {
-//  def eqv(x: (A, B), y: (A, B)) = x._1 === y._1 && x._2 === y._2
-//}
-//
-//
-//val a = (1, 2)
-//val b = (2, 3)
-//val c = ("Hello", 4)
-//
-//a === b
-//
-//1 === 2
+
+import Query._
+
+def query: Query[List[Vector[(Int, Int)]]] =
+  for {
+    v <- get(1)
+    p <- withEdge(v, (1, 4))
+  } yield p
+
+
+import cats.{Id, ~>}
+import SimpleGraph._
+
+def toyInterpreter[G[_, _[_]], V, E[_]](g: G[V, E])(implicit ev: Graph[G]) = new (QueryA ~> Id) {
+  def apply[A](fa: QueryA): Id[A] =
+    fa match {
+      case Get(v: V) => Graph[G].getVertex(g, v).fold(List.empty[V])(List(_)).asInstanceOf[A]
+      case WithEdge(vs, e) => ???
+      case WithInNeighbour(vs, inV) => ???
+      case WithOutNeighbour(vs, outV) => ???
+    }
+}
 
