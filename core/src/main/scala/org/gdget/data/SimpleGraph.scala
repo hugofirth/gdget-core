@@ -68,6 +68,8 @@ object SimpleGraph extends SimpleGraphInstances {
 
   type AdjacencyList[V] = Map[V, (Set[V], Set[V])]
 
+  type N[E, V] = SimpleNeighbourhood[V, E]
+
   //TODO: Look at ScalaGraph for shared companion objects
   //TODO: Look at Cats and decide which typeclasses all Graphs should provide instances for?
 
@@ -94,7 +96,7 @@ object SimpleGraph extends SimpleGraphInstances {
     lazy val order = edges.size
   }
 
-  private[gdget] case object NullGraph extends SimpleGraph[Nothing, ({ type λ[a] = (Nothing, Nothing)})#λ] {
+  private[gdget] case object NullGraph extends SimpleGraph[Nothing, Lambda[A => (Nothing, Nothing)]] {
 
     type EA[a] = (Nothing, Nothing)
 
@@ -115,10 +117,11 @@ trait SimpleGraphInstances {
 
   import SimpleGraph._
 
-  implicit def simpleGraph[V, E[_] : Edge](implicit nEv: Neighbourhood[SimpleNeighbourhood, Unit]): Graph[SimpleGraph] =
+  implicit def simpleGraph: Graph[SimpleGraph] =
     new SimpleGraphLike {
 
-      override implicit def N = nEv
+      override implicit def N = simpleNeighbourhood
+
     }
 
   implicit def simpleGraphMonoid[V, E[_] : Edge](implicit ev: Monoid[SimpleGraph.AdjacencyList[V]]): Monoid[SimpleGraph[V, E]] =
@@ -131,14 +134,14 @@ trait SimpleGraphInstances {
       }
     }
 
-  implicit def simpleNeighbourhood: Neighbourhood[SimpleNeighbourhood, Unit] =
-    new Neighbourhood[SimpleNeighbourhood, Unit] {
+  implicit def simpleNeighbourhood: UNeighbourhood[SimpleNeighbourhood] =
+    new UNeighbourhood[SimpleNeighbourhood] {
 
       //TODO: Create LNeighbourhood => Neighbourhood hierarchy
-      override def center[V, E[_, + _]](n: SimpleNeighbourhood[V, E[V, Unit]]): V = n.center
+      override def center[V, E[_, _]](n: SimpleNeighbourhood[V, E[V, Unit]]): V = n.center
 
 
-      override def edges[V, E[_, + _]](n: SimpleNeighbourhood[V, E[V, Unit]])(implicit ev: LEdge[E, Unit]): Iterator[E[V, Unit]] =
+      override def edges[V, E[_, _]](n: SimpleNeighbourhood[V, E[V, Unit]])(implicit ev: LEdge[E, Unit]): Iterator[E[V, Unit]] =
         n.neighbours._1.map(ev.connect(_, n.center, ())).iterator ++ n.neighbours._2.map(ev.connect(n.center, _, ())).iterator
     }
 
@@ -147,6 +150,7 @@ private[gdget] sealed trait SimpleGraphLike extends Graph[SimpleGraph] {
 
   import SimpleGraph._
 
+  //TODO: Sort out the Neighbourhood mess we're developing.
   override type N[V, E] = SimpleNeighbourhood[V, E]
 
   //TODO: Use pattern matching to check for NullGraph as a performance optimisation

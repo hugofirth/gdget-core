@@ -11,7 +11,8 @@ def GdgetProject(name: String): Project = (
       libraryDependencies ++= Seq(
         "org.scalatest" %% "scalatest" % "2.2.6" % "test",
         "org.typelevel" %% "cats" % "0.4.1"
-      )
+      ),
+      addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.7.1")
     )
 )
 

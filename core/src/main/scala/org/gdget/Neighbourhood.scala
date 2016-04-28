@@ -32,17 +32,17 @@ import language.higherKinds
 trait Neighbourhood[N[_, _], L] extends Any with Serializable { self =>
 
   /** Make sure that E provides an instance of the Edge typeclass with type member V = V */
-  def degree[V, E[_, +_]](n: N[V, E[V, L]])(implicit ev: LEdge[E, L]): Int = self.edges(n).size
+  def degree[V, E[_, _]](n: N[V, E[V, L]])(implicit ev: LEdge[E, L]): Int = self.edges(n).size
 
-  def center[V, E[_, +_]](n: N[V, E[V, L]]): V
+  def center[V, E[_, _]](n: N[V, E[V, L]]): V
 
   //TODO: look at pattern matching constructor for edge (center |->| v, v |->| center etc...) to increase clarity of this method
   //Should override for performance if neighbours are known directly, otherwise we're going neighbours->edges->neighbours
-  def neighbours[V, E[_, +_]](n: N[V, E[V, L]])(implicit ev: LEdge[E, L]): Iterator[V] =
+  def neighbours[V, E[_, _]](n: N[V, E[V, L]])(implicit ev: LEdge[E, L]): Iterator[V] =
     edges(n).map(LEdge[E, L].other(_, self.center(n))).flatten
 
 
-  def edges[V, E[_, +_]](n: N[V, E[V, L]])(implicit ev: LEdge[E, L]): Iterator[E[V, L]]
+  def edges[V, E[_, _]](n: N[V, E[V, L]])(implicit ev: LEdge[E, L]): Iterator[E[V, L]]
 
   /** Method for returning the "In" edges adjacent to the center vertex of a given neighbourhood.
     *
@@ -54,7 +54,7 @@ trait Neighbourhood[N[_, _], L] extends Any with Serializable { self =>
     * @param n The neighbourhood whose directed "In" edges we are looking to return
     * @return The set of edges whose destination vertex equals center(n)
     */
-  def inEdges[V, E[_, +_]](n: N[V, E[V, L]])(implicit ev: LEdge[E, L]): Iterator[E[V, L]] =
+  def inEdges[V, E[_, _]](n: N[V, E[V, L]])(implicit ev: LEdge[E, L]): Iterator[E[V, L]] =
     self.edges(n).filter(LEdge[E, L].right(_) == self.center(n))
 
 
@@ -69,7 +69,7 @@ trait Neighbourhood[N[_, _], L] extends Any with Serializable { self =>
     * @param n The neighbourhood whose directed "out" edges we are looking to return
     * @return The set of edges whose source vertex equals center(n)
     */
-  def outEdges[V, E[_, +_]](n: N[V, E[V, L]])(implicit ev: LEdge[E, L]): Iterator[E[V, L]] =
+  def outEdges[V, E[_, _]](n: N[V, E[V, L]])(implicit ev: LEdge[E, L]): Iterator[E[V, L]] =
     self.edges(n).filter(LEdge[E, L].left(_) == self.center(n))
 
 }
@@ -78,7 +78,7 @@ object Neighbourhood {
 
   @inline def apply[N[_, _], L](implicit ev: Neighbourhood[N, L]): Neighbourhood[N, L] = ev
 
-  implicit class NeighbourhoodOps[N[_, _], V, E[_, +_], L](val n: N[V, E[V, L]]) extends AnyVal {
+  implicit class NeighbourhoodOps[N[_, _], V, E[_, _], L](val n: N[V, E[V, L]]) extends AnyVal {
     def edges(implicit nEv: Neighbourhood[N, L], eEv: LEdge[E, L]) = nEv.edges(n)
     def neighbours(implicit nEv: Neighbourhood[N, L], lEv: LEdge[E, L]) = nEv.neighbours(n)
     def degree(implicit nEv: Neighbourhood[N, L], lEv: LEdge[E, L]) = nEv.degree(n)

@@ -35,7 +35,7 @@ trait TupleInstances {
     def eqv(x: (A, B), y: (A, B)) = x._1 === y._1 && x._2 === y._2
   }
 
-  implicit def tuple2Edge: Edge[({ type λ[a] = (a, a) })#λ] = new Edge[({ type λ[a] = (a, a) })#λ] {
+  implicit def tuple2Edge: Edge[Lambda[a => (a, a)]] = new Edge[Lambda[a => (a, a)]] {
 
     override def connect[V](left: V, right: V, label: Unit = ()): (V, V) = (left, right)
 

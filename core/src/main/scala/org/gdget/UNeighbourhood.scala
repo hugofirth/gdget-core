@@ -1,4 +1,4 @@
-/** gdget-core
+/** gdget
   *
   * Copyright (c) 2016 Hugo Firth
   * Email: <me@hugofirth.com/>
@@ -17,16 +17,17 @@
   */
 package org.gdget
 
-import cats.free.Free
 import language.higherKinds
 
 /** Description of Class
   *
   * @author hugofirth
   */
-package object data {
+trait UNeighbourhood[N[_, _]] extends Neighbourhood[N, Unit] {}
 
-  /** [[cats.free.Free]] type for Graph Queries based upon QueryOp ADT */
-  type QueryIO[G[_, _[_]], V, E[_], A] = Free[QueryOp[G, V, E, ?], A]
+object UNeighbourhood {
 
+  @inline def apply[N[_, _]: UNeighbourhood]: UNeighbourhood[N] = implicitly[UNeighbourhood[N]]
+
+  //TODO: Add Ops and refactor class name to follow usual patterns.
 }

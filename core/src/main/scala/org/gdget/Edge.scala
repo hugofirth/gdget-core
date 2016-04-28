@@ -29,7 +29,7 @@ import scala.annotation.implicitNotFound
   * @since 0.1
   */
 @implicitNotFound("No member of type class Edge found for type ${E}")
-trait Edge[E[_]] extends LEdge[({ type λ[a, +_] = E[a]})#λ, Unit] {
+trait Edge[E[_]] extends LEdge[Lambda[(A, B) => E[A]], Unit] {
 
   def label[V](e: E[V]): Unit = ()
 

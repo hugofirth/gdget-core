@@ -19,35 +19,48 @@ package org.gdget.data
 
 import language.higherKinds
 import cats.free.Free.liftF
-import org.gdget.{LEdge, Path}
+import org.gdget.{Edge, Graph, LEdge, Path}
 
 /** The ADT representing a basic grammar for read-only queries over collection types which provide [[org.gdget.Graph]]
   * instances.
   *
   * @author hugofirth
   */
-sealed trait QueryA[A]
+
+
+
+sealed trait QueryOp[G[_, _[_]], V, E[_], A]
 //TODO: Have getMatch take a Path, not a pattern graph, and have Path have a deconstructor (unapply), so that I can
 //  get at individual elements of the path inside the for comprehension of the query.
-case class Get[V](vertex: V) extends QueryA[List[V]]
+case class Get[G[_, _[_]], V, E[_]](vertex: V, g: G[V, E])(implicit val G: Graph[G], val E: Edge[E])
+  extends QueryOp[G, V, E, Option[V]]
 
-case class WithEdge[V, E[_, _], L](vertices: List[V], edge: E[V, L])(implicit ev: LEdge[E, L])
-  extends QueryA[List[Vector[E[V, L]]]]
+case class GetWhere[G[_, _[_]], V, E[_]](cond: V => Boolean, g: G[V, E])(implicit val G: Graph[G], val E: Edge[E])
+  extends QueryOp[G, V, E, List[V]]
 
-case class WithInNeighbour[V](vertices: List[V], in: V) extends QueryA[List[Vector[V]]]
+case class TraverseEdge[G[_, _[_]], V, E[_]](vertex: V, edge: E[V], g: G[V, E])
+                                            (implicit gEv: Graph[G], eEv: Edge[E]) extends QueryOp[G, V, E, Option[E[V]]]
 
-case class WithOutNeighbour[V](vertices: List[V], out: V) extends QueryA[List[Vector[V]]]
+case class TraverseInNeighbour[G[_, _[_]], V, E[_]](vertex: V, in: V, g: G[V, E])
+                                                   (implicit gEv: Graph[G], eEv: Edge[E]) extends QueryOp[G, V, E, Option[V]]
 
-object Query {
+case class TraverseOutNeighbour[G[_, _[_]], V, E[_]](vertex: V, out: V, g: G[V, E])
+                                                    (implicit gEv: Graph[G], eEv: Edge[E]) extends QueryOp[G, V, E, Option[V]]
 
-  def get[V](vertex: V): Query[List[V]] = liftF[QueryA, List[V]](Get(vertex))
+final case class GraphOp[G[_, _[_]], V, E[_]](graph: G[V, E])(implicit gEv: Graph[G], eEv: Edge[E]) {
 
-  def withEdge[V, E[_, _], L](vertices: List[V], edge: E[V, L])(implicit ev: LEdge[E, L]): Query[List[Vector[E[V, L]]]] =
-    liftF[QueryA, List[Vector[E[V, L]]]](WithEdge(vertices, edge))
+  type QueryOpA[A] = QueryOp[G, V, E, A]
 
-  def withInNeighbour[V](vertices: List[V], in: V): Query[List[Vector[V]]] =
-    liftF[QueryA, List[Vector[V]]](WithInNeighbour(vertices, in))
+  def get(vertex: V): QueryIO[G, V, E, Option[V]] = liftF[QueryOpA, Option[V]](Get(vertex, graph))
 
-  def withOutNeighbour[V](vertices: List[V], out: V): Query[List[Vector[V]]] =
-    liftF[QueryA, List[Vector[V]]](WithInNeighbour(vertices, out))
+  def getWhere(cond: V => Boolean): QueryIO[G, V, E, List[V]] = liftF[QueryOpA, List[V]](GetWhere(cond, graph))
+
+  def traverseEdge(vertex: V, edge: E[V]): QueryIO[G, V, E, Option[E[V]]] =
+    liftF[QueryOpA, Option[E[V]]](TraverseEdge(vertex, edge, graph))
+
+  def traverseInNeighbour(vertex: V, in: V): QueryIO[G, V, E, Option[V]] =
+    liftF[QueryOpA, Option[V]](TraverseInNeighbour(vertex, in, graph))
+
+  def traverseOutNeighbour(vertex: V, out: V): QueryIO[G, V, E, Option[V]] =
+    liftF[QueryOpA, Option[V]](TraverseOutNeighbour(vertex, out, graph))
 }

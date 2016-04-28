@@ -25,7 +25,7 @@ import scala.language.{higherKinds, reflectiveCalls}
   * @author hugofirth
   */
 @implicitNotFound("No member of type class LEdge found for types ${E} and ${L}")
-trait LEdge[E[_, +_], L] extends Any with Serializable  {
+trait LEdge[E[_, _], L] extends Any with Serializable  {
 
   def label[V](e: E[V, L]): L
 
@@ -43,9 +43,9 @@ trait LEdge[E[_, +_], L] extends Any with Serializable  {
 
 object LEdge {
 
-  @inline def apply[E[_, +_], L](implicit ev: LEdge[E, L]): LEdge[E, L] = ev
+  @inline def apply[E[_, _], L](implicit ev: LEdge[E, L]): LEdge[E, L] = ev
 
-  implicit class LEdgeOps[E[_, +_], V, L](e: E[V, L])(implicit val ev: LEdge[E, L]) {
+  implicit class LEdgeOps[E[_, _], V, L](e: E[V, L])(implicit val ev: LEdge[E, L]) {
     //TODO: Work out inheritance heirarchy for LEdgeOps and EdgeOps which means there are no ambiguous implicits
     def label = LEdge[E, L].label(e)
     def vertices = LEdge[E, L].vertices(e)
