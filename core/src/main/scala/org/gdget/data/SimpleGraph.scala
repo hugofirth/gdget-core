@@ -29,7 +29,6 @@ import scala.language.{higherKinds, reflectiveCalls}
   * immutable). SimpleGraph is designed to be easy to understand, providing a basis for comparison between various other 
   * Graph implementations, and a development sandbox.
   * 
-  * @see [[SimpleNeighbourhood]]
   * @author hugofirth
   */
 sealed trait SimpleGraph[V, E[_]] {
@@ -52,23 +51,10 @@ sealed trait SimpleGraph[V, E[_]] {
 
 }
 
-/** SimpleNeighbourhood is a case class which wraps rows of the Adjacency matrix representation within SimpleGraph.
-  * SimpleNeighbourhood instances correspond to the closed neighbourhood of vertices adjacent to a center vertex v; they
-  * provide an instance of the [[org.gdget.Neighbourhood]] typeclass.
-  *
-  * TODO: Update Neighbourhood to have (center, in, out), rather than (center, (in, out))
-  *
-  * @param center The vertex upon which this neighbourhood is centered
-  * @param neighbours The set of vertices which are connected to `center`
-  * @tparam V The type of the vertices in the neighbourhood
-  */
-final case class SimpleNeighbourhood[V, E](center: V, neighbours: (Set[V], Set[V]))
-
 object SimpleGraph extends SimpleGraphInstances {
 
   type AdjacencyList[V] = Map[V, (Set[V], Set[V])]
 
-  type N[E, V] = SimpleNeighbourhood[V, E]
 
   //TODO: Look at ScalaGraph for shared companion objects
   //TODO: Look at Cats and decide which typeclasses all Graphs should provide instances for?
@@ -120,8 +106,6 @@ trait SimpleGraphInstances {
   implicit def simpleGraph: Graph[SimpleGraph] =
     new SimpleGraphLike {
 
-      override implicit def N = simpleNeighbourhood
-
     }
 
   implicit def simpleGraphMonoid[V, E[_] : Edge](implicit ev: Monoid[SimpleGraph.AdjacencyList[V]]): Monoid[SimpleGraph[V, E]] =
@@ -134,24 +118,11 @@ trait SimpleGraphInstances {
       }
     }
 
-  implicit def simpleNeighbourhood: UNeighbourhood[SimpleNeighbourhood] =
-    new UNeighbourhood[SimpleNeighbourhood] {
-
-      //TODO: Create LNeighbourhood => Neighbourhood hierarchy
-      override def center[V, E[_, _]](n: SimpleNeighbourhood[V, E[V, Unit]]): V = n.center
-
-
-      override def edges[V, E[_, _]](n: SimpleNeighbourhood[V, E[V, Unit]])(implicit ev: LEdge[E, Unit]): Iterator[E[V, Unit]] =
-        n.neighbours._1.map(ev.connect(_, n.center, ())).iterator ++ n.neighbours._2.map(ev.connect(n.center, _, ())).iterator
-    }
 
 }
 private[gdget] sealed trait SimpleGraphLike extends Graph[SimpleGraph] {
 
   import SimpleGraph._
-
-  //TODO: Sort out the Neighbourhood mess we're developing.
-  override type N[V, E] = SimpleNeighbourhood[V, E]
 
   //TODO: Use pattern matching to check for NullGraph as a performance optimisation
   //TODO: Investigate Specialization?
@@ -203,7 +174,10 @@ private[gdget] sealed trait SimpleGraphLike extends Graph[SimpleGraph] {
     GCons(ddAdj)
   }
 
-  override def neighbourhood[V, E[_] : Edge](g: SimpleGraph[V, E], v: V) = g.adj.get(v).map(SimpleNeighbourhood(v, _))
+  override def neighbourhood[V, E[_] : Edge](g: SimpleGraph[V, E], v: V) = g.adj.get(v).map { case (in, out) =>
+      val mapper = (acc: Map[V, Set[Unit]], elem: V) => acc + (elem -> Set(()))
+      UNeighbourhood(v, in.foldLeft(Map.empty[V, Set[Unit]])(mapper), out.foldLeft(Map.empty[V, Set[Unit]])(mapper))
+  }
 
   /**
     * Example query:

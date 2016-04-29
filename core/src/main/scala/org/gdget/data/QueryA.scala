@@ -19,19 +19,20 @@ package org.gdget.data
 
 import language.higherKinds
 import cats.free.Free.liftF
+import cats.{Id, ~>}
 import org.gdget.{Edge, Graph, LEdge, Path}
 
 /** The ADT representing a basic grammar for read-only queries over collection types which provide [[org.gdget.Graph]]
   * instances.
   *
+  * TODO: Make a query package and include Interpreter Object in it, alongside AST and alongside QueryFactory
+  * TODO: Switch to using partial functions, and have the default interpreter collect paths as they are traversed.
+  * TODO: Have a logging interpreter which counts traversals. Think about a way to check for interpartition traversals.
+  *
   * @author hugofirth
   */
-
-
-
 sealed trait QueryOp[G[_, _[_]], V, E[_], A]
-//TODO: Have getMatch take a Path, not a pattern graph, and have Path have a deconstructor (unapply), so that I can
-//  get at individual elements of the path inside the for comprehension of the query.
+
 case class Get[G[_, _[_]], V, E[_]](vertex: V, g: G[V, E])(implicit val G: Graph[G], val E: Edge[E])
   extends QueryOp[G, V, E, Option[V]]
 
@@ -46,6 +47,7 @@ case class TraverseInNeighbour[G[_, _[_]], V, E[_]](vertex: V, in: V, g: G[V, E]
 
 case class TraverseOutNeighbour[G[_, _[_]], V, E[_]](vertex: V, out: V, g: G[V, E])
                                                     (implicit gEv: Graph[G], eEv: Edge[E]) extends QueryOp[G, V, E, Option[V]]
+
 
 final case class GraphOp[G[_, _[_]], V, E[_]](graph: G[V, E])(implicit gEv: Graph[G], eEv: Edge[E]) {
 
@@ -64,3 +66,4 @@ final case class GraphOp[G[_, _[_]], V, E[_]](graph: G[V, E])(implicit gEv: Grap
   def traverseOutNeighbour(vertex: V, out: V): QueryIO[G, V, E, Option[V]] =
     liftF[QueryOpA, Option[V]](TraverseOutNeighbour(vertex, out, graph))
 }
+

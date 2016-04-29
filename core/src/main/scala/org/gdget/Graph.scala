@@ -19,6 +19,7 @@ package org.gdget
 
 import scala.language.{existentials, higherKinds, reflectiveCalls}
 import cats._
+import org.gdget.data.UNeighbourhood
 
 import scala.annotation.implicitNotFound
 
@@ -32,13 +33,6 @@ import scala.annotation.implicitNotFound
 
 @implicitNotFound("No member of type class Graph found for type ${G}")
 trait Graph[G[_, _[_]]] extends Any with Serializable {
-
-
-  /** type member N represents the closed-neighbourhood of a given vertex v, and should provide a [[Neighbourhood]] instance */
-  type N[_, _]
-
-  /** Make sure that N has an instance of the appropriate typeclass */
-  implicit def N: Neighbourhood[N, Unit]
 
   //TODO: Look at using Stream, Streaming or Seq to represent this - Iterator is mutable!
   def vertices[V, E[_]: Edge](g: G[V, E]): Iterator[V]
@@ -57,7 +51,7 @@ trait Graph[G[_, _[_]]] extends Any with Serializable {
 
   def getEdge[V, E[_]: Edge](g: G[V, E], e: E[V]): Option[E[V]] = this.findEdge(g)(_ == e)
 
-  def neighbourhood[V, E[_]: Edge](g: G[V, E], v: V): Option[N[V, E[V]]]
+  def neighbourhood[V, E[_]: Edge](g: G[V, E], v: V): Option[UNeighbourhood[V, E]]
 
   /** The order of the graph. This is equal to the number of vertices stored.
     *

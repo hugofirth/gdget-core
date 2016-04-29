@@ -46,6 +46,9 @@ import scala.collection.mutable
   *   // mutual == Vector('a', 'c')
   *   }}}
   *
+  * TODO: Check if built in TrieMap works for this purpose as is likely to be more efficient?
+  * TODO: Fix dot free style in this class, its a little icky and we have tests so should take long.
+  *
   * @author hugofirth
   * @since 0.1
   */

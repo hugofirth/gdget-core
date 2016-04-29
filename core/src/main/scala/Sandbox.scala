@@ -39,7 +39,7 @@ object Sandbox extends App {
 
   type UTuple[A] = (A, A)
 
-  val b = SimpleGraph[Int, UTuple](
+  val b: SimpleGraph[Int, UTuple] = SimpleGraph[Int, UTuple](
     1 -> 4,
     1 -> 5,
     1 -> 6,
@@ -57,9 +57,7 @@ object Sandbox extends App {
 
   import SimpleGraph._
 
-  val op = new GraphOp[SimpleGraph, Int, UTuple](b)
-
-
+  val op = GraphOp(b)
 
   //TODO: Work out why I have to manually annotate Tuple2[Int, Int] with its E[Int] alias?
 
@@ -69,40 +67,7 @@ object Sandbox extends App {
       p <- op.traverseEdge(v.get, (1, 4))
     } yield p
 
-
-  import cats.{~>, Id}
-
-
-  def toyInterpreter = new (QueryOp[SimpleGraph, Int, UTuple, ?] ~> Id) {
-    override def apply[A](fa: QueryOp[SimpleGraph, Int, UTuple, A]): Id[A] =
-      fa match {
-        case Get(v, g) => {
-          println(s"Get $v")
-          Graph[SimpleGraph].getVertex(g, v)
-        }
-        case GetWhere(condition, g) => Graph[SimpleGraph].vertices(g).filter(condition).toList
-        case TraverseEdge(v, e, g) => {
-          println(s"Traverse edge $e of $v")
-          val n = Graph[SimpleGraph].neighbourhood(g, v)
-          n.fold(None)(nei => Graph[SimpleGraph].N.edges(nei).find(_ == e))
-
-        }
-        case TraverseInNeighbour(v, inV, g) => ???
-        case TraverseOutNeighbour(v, outV, g) => ???
-      }
-  }
-
-  def interpreter[G[_, _[_]], V, E[_]](implicit gEv: Graph[G], eEv: Edge[E]) = new (QueryOp[G, V, E, ?] ~> Id) {
-    def apply[A](fa: QueryOp[G, V, E, A]): Id[A] =
-      fa match {
-        case Get(v, g) => ???
-        case GetWhere(condition, g) => ???
-        case TraverseEdge(vs, e, g) => ???
-        case TraverseInNeighbour(v, inV, g) => ???
-        case TraverseOutNeighbour(v, outV, g) => ???
-      }
-  }
-
-
+  val result = query.foldMap(interpreter)
+  println(s"Result is: $result")
 
 }
