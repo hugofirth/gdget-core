@@ -23,9 +23,10 @@ import language.higherKinds
 
 /** Description of Class
   *
+  * TODO: Neighbourhood is going to get used everywhere, so we should put the effort in to specialise
+  *
   * @author hugofirth
   */
-
 trait Neighbourhood[V, E[_, _], L] {
 
   implicit def E: LEdge[E, L]

@@ -19,4 +19,4 @@ def GdgetProject(name: String): Project = (
 
 lazy val core = GdgetProject("core").settings()
 
-val partitioned = GdgetProject("partitioned").dependsOn(core).settings()
+lazy val partitioned = GdgetProject("partitioned").dependsOn(core).settings()

@@ -74,9 +74,13 @@ trait Graph[G[_, _[_]]] extends Any with Serializable {
 
   //TODO: Implement unionAll ?
 
-  def findVertex[V, E[_]: Edge](g: G[V, E])(f: (V) => Boolean): Option[V] = this.vertices(g) find f
+  def findVertex[V, E[_]: Edge](g: G[V, E])(f: V => Boolean): Option[V] = this.vertices(g).find(f)
 
-  def findEdge[V, E[_]: Edge](g: G[V, E])(f: (E[V]) => Boolean): Option[E[V]] = this.edges(g) find f
+  def findVertices[V, E[_]: Edge](g: G[V, E])(f: V => Boolean): Iterator[V] = this.vertices(g).filter(f)
+
+  def findEdge[V, E[_]: Edge](g: G[V, E])(f: E[V] => Boolean): Option[E[V]] = this.edges(g).find(f)
+
+  def findEdges[V, E[_]: Edge](g: G[V, E])(f: E[V] => Boolean): Iterator[E[V]] = this.edges(g).filter(f)
 
   def plusVertex[V, E[_]: Edge](g: G[V, E], v: V): G[V, E]
 

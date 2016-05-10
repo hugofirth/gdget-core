@@ -1,4 +1,5 @@
-import org.gdget.{Edge, Neighbourhood}
+import org.gdget.data.query._
+import org.gdget.Edge
 
 /** gdget
   *
@@ -23,7 +24,6 @@ import org.gdget.{Edge, Neighbourhood}
   */
 object Sandbox extends App {
 
-  import org.gdget.Graph
   import org.gdget.data._
   import org.gdget.std.all._
   import language.higherKinds

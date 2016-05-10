@@ -17,45 +17,8 @@
   */
 package org.gdget
 
-import cats.free.Free
-import language.higherKinds
-
 /** Description of Class
   *
   * @author hugofirth
   */
-package object data {
-
-  /** [[cats.free.Free]] type for Graph Queries based upon QueryOp ADT */
-  type QueryIO[G[_, _[_]], V, E[_], A] = Free[QueryOp[G, V, E, ?], A]
-
-  import cats.{Id, ~>}
-
-  def interpreter[G[_, _[_]], V, E[_]](implicit gEv: Graph[G], eEv: Edge[E]) = new (QueryOp[G, V, E, ?] ~> Id) {
-
-    def apply[A](fa: QueryOp[G, V, E, A]): Id[A] =
-      fa match {
-        case Get(v, g) => {
-          println(s"Get $v")
-          Graph[G].getVertex(g, v)
-        }
-        case GetWhere(condition, g) => Graph[G].vertices(g).filter(condition).toList
-        case TraverseEdge(v, e, g) => {
-          println(s"Traverse edge $e of $v")
-          val n = Graph[G].neighbourhood(g, v)
-          n.fold(None: Option[E[V]])(_.edges.find(_ == e))
-        }
-        case TraverseInNeighbour(v, inV, g) => {
-          println(s"Traverse incoming neighbour of $v")
-          val n = Graph[G].neighbourhood(g, v)
-          n.fold(None: Option[V])(_.in.keySet.find(_ == inV))
-        }
-        case TraverseOutNeighbour(v, outV, g) => {
-          println(s"Traverse outgoing neighbour of $v")
-          val n = Graph[G].neighbourhood(g, v)
-          n.fold(None: Option[V])(_.out.keySet.find(_ == outV))
-        }
-      }
-  }
-
-}
+package object data {}

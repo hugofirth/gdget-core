@@ -25,10 +25,10 @@ package org
   */
 package object gdget {
 
-  /** Representation of a Label, Int rather than Byte, because BitSet < Set[Byte] */
+  /** Because of how we handle Labels, they should be implicitly convertible to Ints */
   type Label[A] = A => Int
 
-  type HPair[+A] = Tuple2[A, A]
+  type HPair[+A] = (A, A)
 
   type Path[A] = Vector[A]
 }
