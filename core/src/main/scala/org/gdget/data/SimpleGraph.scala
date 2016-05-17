@@ -179,20 +179,5 @@ private[gdget] sealed trait SimpleGraphLike extends Graph[SimpleGraph] {
       UNeighbourhood(v, in.foldLeft(Map.empty[V, Set[Unit]])(mapper), out.foldLeft(Map.empty[V, Set[Unit]])(mapper))
   }
 
-  /**
-    * Example query:
-    *
-    * val v = g.collect { case Person(a) => Person(a) }
-    * for {
-    *   n <- g.neighbourhood(v)
-    *   edges <- n.edges
-    *   likes <- edges.collect { case Like(a) => Like(a) }
-    *   l <- likes
-    *
-    * }
-    *
-    * g.neighbourhood(v).fold(Set.empty[(V, V)])(_.edges).
-    */
-
 }
 

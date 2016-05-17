@@ -17,17 +17,23 @@
   */
 package org.gdget.partitioned
 
-import org.gdget.{Edge, Graph}
+import org.gdget.Edge
+
 
 import language.higherKinds
 
-/** Simple typeclass for Partitioner objects which may split input graphs into k pieces according to some strategy. */
-trait Partitioner[P[_]] extends Any with Serializable {
+/** Simple typeclass for vertex/edge -> PartitionId mappings */
+trait PartitionScheme[S[_, _]]{
 
-  /** The Scheme type for this partitioner*/
-  type S[_, _]
+  import PartitionScheme._
 
-  implicit def S: PartitionScheme[S]
+  def getPartition[V, E[_]: Edge](scheme: S[V, E[V]], edge: E[V]): PartitionId
 
-  def partition[G[_, _[_]]: Graph, V, E[_]: Edge](strategy: P[G[V, E]], g: G[V, E], k: Int): S[V, E[V]]
+  def getPartition[V, E[_]](scheme: S[V, E[V]], vertex: V): PartitionId
+}
+
+object PartitionScheme {
+
+  /** Wrapper type for partition ids */
+  case class PartitionId(id: Int)
 }
