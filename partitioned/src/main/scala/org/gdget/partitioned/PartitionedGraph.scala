@@ -21,8 +21,11 @@ import org.gdget.data.UNeighbourhood
 import org.gdget.{Edge, Graph}
 
 import language.higherKinds
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.duration._
 
-/** Simple proof of concept partitioned main-memory graph */
+
+/** Simple proof of concept of a thread-partitioned main-memory graph */
 sealed trait PartitionedGraph[G[_, _[_]], V, E[_]] {
 
   /** Make sure that G has a Graph */
@@ -39,11 +42,12 @@ trait PartitionedGraphInstances {
   implicit def partitionedGraphLike[G[_, _[_]]: Graph]: Graph[PartitionedGraph[G, ?, ?[_]]] =
     new Graph[PartitionedGraph[G, ?, ?[_]]] {
 
-      //TODO: Do all the below with s.c.Future - will mean that I need an ExecutionContext in PartitionedGraph?
+      import ExecutionContext.Implicits.global
 
-      //TODO: Look at using Stream, Streaming or Seq to represent this - Iterator is mutable!
+      //TODO: How best to do this? Simple lazy op like below cheaper sync, but in general Futures or Actors?
+
       override def vertices[V, E[_] : Edge](g: PartitionedGraph[G, V, E]): Iterator[V] =
-        g.partitions.foldLeft(Iterator.empty[V])((vs, part) => vs ++ Graph[G].vertices(part))
+       Await.result(Future.reduce(g.partitions.map(p => Future { Graph[G].vertices(p) }))(_ ++ _), Duration.Inf)
 
       override def minusEdge[V, E[_] : Edge](g: PartitionedGraph[G, V, E], e: E[V]): PartitionedGraph[G, V, E] = ???
 

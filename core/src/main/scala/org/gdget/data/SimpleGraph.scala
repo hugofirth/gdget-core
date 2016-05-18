@@ -61,7 +61,7 @@ object SimpleGraph extends SimpleGraphInstances {
 
   def empty[V, E[_]: Edge]: SimpleGraph[V, E] = NullGraph[V, E]
 
-  final def apply[V, E[_]: Edge](es: E[V]*): SimpleGraph[V, E] = {
+  def apply[V, E[_]: Edge](es: E[V]*): SimpleGraph[V, E] = {
     //TODO: Clean up (Neighbours Case class will help) and do in 1 pass
     val repr = es.foldLeft(Map.empty[V, (Set[V], Set[V])]) { (adj,e) =>
       val outAdj = adj.get(Edge[E].left(e)).fold(adj + (Edge[E].left(e) -> (Set.empty[V], Set(Edge[E].right(e))))) {
@@ -95,7 +95,7 @@ object SimpleGraph extends SimpleGraphInstances {
 
     def unapply[V, E[_]: Edge](g: SimpleGraph[V, E]): Boolean = g eq this
 
-    def apply[V, E[_]](implicit eEv: Edge[E]): SimpleGraph[V, E] = this.asInstanceOf[SimpleGraph[V, E]]
+    def apply[V, E[_]: Edge]: SimpleGraph[V, E] = this.asInstanceOf[SimpleGraph[V, E]]
   }
 }
 

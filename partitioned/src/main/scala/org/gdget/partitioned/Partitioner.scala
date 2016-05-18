@@ -25,9 +25,9 @@ import language.higherKinds
 trait Partitioner[P[_]] extends Any with Serializable {
 
   /** The Scheme type for this partitioner*/
-  type S[_, _]
+  type S[_]
 
   implicit def S: PartitionScheme[S]
 
-  def partition[G[_, _[_]]: Graph, V, E[_]: Edge](strategy: P[G[V, E]], g: G[V, E], k: Int): S[V, E[V]]
+  def partition[G[_, _[_]]: Graph, V, E[_]: Edge](strategy: P[G[V, E]], g: G[V, E], k: Int): S[V]
 }
