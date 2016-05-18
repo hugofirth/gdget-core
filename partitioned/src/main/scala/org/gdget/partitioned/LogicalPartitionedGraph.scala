@@ -94,12 +94,15 @@ object LogicalPartitionedGraph extends LogicalPartitionedGraphInstances {
   def apply[V, E[_]: Edge, P[_]: Partitioner](partitioner: P[LogicalPartitionedGraph[V, E]], es: E[V]*) = ???
 
   /** Non-empty "Constructor" type of LogicallyPartitionedGraph */
-  private[gdget] final case class GCons[V, E[_], S[_]](adj: AdjacencyList[V], scheme: S[V])(implicit val S: PartitionScheme[S], val E: Edge[E])
+  private[gdget] final case class GCons[V, E[_], S0[_]](adj: AdjacencyList[V], scheme: S0[V])
+                                                       (implicit val S: PartitionScheme[S0], val E: Edge[E])
     extends LogicalPartitionedGraph[V, E] {
+
+      type S[a] = S0[a]
 
       lazy val size: Int = vertices.size
       lazy val order: Int = edges.size
-  }
+    }
 
   private[gdget] case object NullGraph extends LogicalPartitionedGraph[Nothing, Lambda[A => (Nothing, Nothing)]] {
 
@@ -140,6 +143,7 @@ trait LogicalPartitionedGraphInstances {
     override def plusVertex[V, E[_] : Edge](g: LogicalPartitionedGraph[V, E], v: V): LogicalPartitionedGraph[V, E] = {
       val part = g.partitionOf(v)
       //TODO: work out why on earth we have to explicitly pass in the PartitionScheme instance explicitly.
+      //implicit val gS = g.S //WAI U NO WORK?!
       g match {
         case NullGraph() =>
           GCons(Map(v -> (part, Map.empty[V, PartitionId], Map.empty[V, PartitionId])), g.scheme)(g.S, g.E)
