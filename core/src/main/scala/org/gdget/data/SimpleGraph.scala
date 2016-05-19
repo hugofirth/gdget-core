@@ -163,7 +163,7 @@ private[gdget] sealed trait SimpleGraphLike extends Graph[SimpleGraph] {
   }
 
   override def minusEdge[V, E[_] : Edge](g: SimpleGraph[V, E], e: E[V]): SimpleGraph[V, E] = {
-    //This does check both end of an edge before removing, instead removing as they go. This is fine because removing an
+    //This doesn't check both ends of an edge before removing, instead removing as they go. This is fine because removing an
     //  element from a collection where it does not exist returns the same collection.
     val dAdj = g.adj.get(Edge[E].left(e)).fold(g.adj) { edges =>
       g.adj.updated(Edge[E].left(e), edges.copy(_2 = edges._2 - Edge[E].right(e)))

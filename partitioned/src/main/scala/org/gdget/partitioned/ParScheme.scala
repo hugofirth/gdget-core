@@ -20,22 +20,22 @@ package org.gdget.partitioned
 import language.higherKinds
 
 /** Simple typeclass for vertex => PartitionId mappings */
-trait PartitionScheme[S[_]]{
+trait ParScheme[S[_]]{
 
-  import PartitionScheme._
+  import ParScheme._
 
   def getPartition[V](scheme: S[V], vertex: V): PartitionId
 }
 
-object PartitionScheme {
+object ParScheme {
 
-  @inline def apply[S[_]: PartitionScheme]: PartitionScheme[S] = implicitly[PartitionScheme[S]]
+  @inline def apply[S[_]: ParScheme]: ParScheme[S] = implicitly[ParScheme[S]]
 
   /** Wrapper type for partition ids */
   case class PartitionId(id: Int)
 
   /** Default instance for Map[V, Int] */
-  implicit val mapScheme: PartitionScheme[Map[?, PartitionId]] = new PartitionScheme[Map[?, PartitionId]] {
+  implicit val mapScheme: ParScheme[Map[?, PartitionId]] = new ParScheme[Map[?, PartitionId]] {
 
     /** Default partition index if a  */
     private val defaultPartition = PartitionId(0)
@@ -44,7 +44,7 @@ object PartitionScheme {
   }
 
   /** Default instance for (V) => Int */
-  implicit val fun1Scheme: PartitionScheme[? => PartitionId] = new PartitionScheme[? => PartitionId] {
+  implicit val fun1Scheme: ParScheme[? => PartitionId] = new ParScheme[? => PartitionId] {
     override def getPartition[V](scheme: (V) => PartitionId, vertex: V): PartitionId = scheme(vertex)
   }
 }

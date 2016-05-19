@@ -27,7 +27,7 @@ trait Partitioner[P[_]] extends Any with Serializable {
   /** The Scheme type for this partitioner*/
   type S[_]
 
-  implicit def S: PartitionScheme[S]
+  implicit def S: ParScheme[S]
 
   def partition[G[_, _[_]]: Graph, V, E[_]: Edge](strategy: P[G[V, E]], g: G[V, E], k: Int): S[V]
 }

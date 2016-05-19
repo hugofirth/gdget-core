@@ -26,7 +26,7 @@ import scala.concurrent.duration._
 
 
 /** Simple proof of concept of a thread-partitioned main-memory graph */
-sealed trait PartitionedGraph[G[_, _[_]], V, E[_]] {
+sealed trait ParGraph[G[_, _[_]], V, E[_]] {
 
   /** Make sure that G has a Graph */
   implicit def G: Graph[G]
@@ -35,31 +35,31 @@ sealed trait PartitionedGraph[G[_, _[_]], V, E[_]] {
   def partitions: Vector[G[V, E]]
 }
 
-object PartitionedGraph extends PartitionedGraphInstances
+object ParGraph extends PartitionedGraphInstances
 
 trait PartitionedGraphInstances {
 
-  implicit def partitionedGraphLike[G[_, _[_]]: Graph]: Graph[PartitionedGraph[G, ?, ?[_]]] =
-    new Graph[PartitionedGraph[G, ?, ?[_]]] {
+  implicit def partitionedGraphLike[G[_, _[_]]: Graph]: Graph[ParGraph[G, ?, ?[_]]] =
+    new Graph[ParGraph[G, ?, ?[_]]] {
 
       import ExecutionContext.Implicits.global
 
       //TODO: How best to do this? Simple lazy op like below cheaper sync, but in general Futures or Actors?
 
-      override def vertices[V, E[_] : Edge](g: PartitionedGraph[G, V, E]): Iterator[V] =
+      override def vertices[V, E[_] : Edge](g: ParGraph[G, V, E]): Iterator[V] =
        Await.result(Future.reduce(g.partitions.map(p => Future { Graph[G].vertices(p) }))(_ ++ _), Duration.Inf)
 
-      override def minusEdge[V, E[_] : Edge](g: PartitionedGraph[G, V, E], e: E[V]): PartitionedGraph[G, V, E] = ???
+      override def minusEdge[V, E[_] : Edge](g: ParGraph[G, V, E], e: E[V]): ParGraph[G, V, E] = ???
 
-      override def edges[V, E[_] : Edge](g: PartitionedGraph[G, V, E]): Iterator[E[V]] = ???
+      override def edges[V, E[_] : Edge](g: ParGraph[G, V, E]): Iterator[E[V]] = ???
 
-      override def plusEdge[V, E[_] : Edge](g: PartitionedGraph[G, V, E], e: E[V]): PartitionedGraph[G, V, E] = ???
+      override def plusEdge[V, E[_] : Edge](g: ParGraph[G, V, E], e: E[V]): ParGraph[G, V, E] = ???
 
-      override def minusVertex[V, E[_] : Edge](g: PartitionedGraph[G, V, E], v: V): PartitionedGraph[G, V, E] = ???
+      override def minusVertex[V, E[_] : Edge](g: ParGraph[G, V, E], v: V): ParGraph[G, V, E] = ???
 
-      override def neighbourhood[V, E[_] : Edge](g: PartitionedGraph[G, V, E], v: V): Option[UNeighbourhood[V, E]] = ???
+      override def neighbourhood[V, E[_] : Edge](g: ParGraph[G, V, E], v: V): Option[UNeighbourhood[V, E]] = ???
 
-      override def plusVertex[V, E[_] : Edge](g: PartitionedGraph[G, V, E], v: V): PartitionedGraph[G, V, E] = ???
+      override def plusVertex[V, E[_] : Edge](g: ParGraph[G, V, E], v: V): ParGraph[G, V, E] = ???
     }
 }
 
