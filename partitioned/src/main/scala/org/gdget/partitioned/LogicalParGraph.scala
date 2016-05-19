@@ -28,6 +28,8 @@ sealed trait LogicalParGraph[V, E[_]] {
 
   import LogicalParGraph._
 
+  //TODO: Consider switching to a type parameter, the below is killing us.
+
   /** Type for this graph's partitioning scheme */
   type S[_]
 
@@ -92,7 +94,7 @@ object LogicalParGraph extends LogicalParGraphInstances {
   /** Representation of an Directed Adjacency List where each entry is labelled with a partition (wrapped Int) */
   type AdjacencyList[V] = Map[V, (PartitionId, Map[V, PartitionId], Map[V, PartitionId])]
 
-  def empty[V, E[_]: Edge]: LogicalParGraph[V, E] = NullGraph[V, E]
+  def empty[V, E[_]: Edge, S[_]: ParScheme]: LogicalParGraph[V, E] = NullGraph[V, E, S]
 
   def apply[V, E[_]: Edge, P[_]: Partitioner](partitioner: P[LogicalParGraph[V, E]], es: E[V]*) = ???
 
@@ -115,7 +117,7 @@ object LogicalParGraph extends LogicalParGraphInstances {
     private[gdget] implicit def E = Edge[EA]
 
     /** Adapter type for which there exists a PartitionScheme instance Map[Nothing, Int] */
-    type S[a] = Map[Nothing, PartitionId]
+    override type S[_] = Map[Nothing, PartitionId]
 
     private[gdget] def scheme: Map[Nothing, PartitionId] = Map.empty[Nothing, PartitionId]
 
@@ -127,9 +129,9 @@ object LogicalParGraph extends LogicalParGraphInstances {
     private[gdget] val adj: AdjacencyList[Nothing] =
       Map.empty[Nothing, (PartitionId, Map[Nothing, PartitionId], Map[Nothing, PartitionId])]
 
-    def unapply[V, E[_]: Edge](g: LogicalParGraph[V, E]): Boolean = g eq this
+    def unapply[V, E[_]: Edge, S0[_]: ParScheme](g: LogicalParGraph.Aux[V, E, S0]): Boolean = g eq this
 
-    def apply[V, E[_]: Edge]: LogicalParGraph[V, E] = this.asInstanceOf[LogicalParGraph[V, E]]
+    def apply[V, E[_]: Edge, S0[_]: ParScheme]: LogicalParGraph.Aux[V, E, S0] = this.asInstanceOf[LogicalParGraph.Aux[V, E, S0]]
   }
 }
 
@@ -194,7 +196,13 @@ trait LogicalParGraphInstances {
         }
       }
 
-      override def minusVertex[V, E[_] : Edge](g: Aux[V, E, S], v: V): Aux[V, E, S] = ???
+      override def minusVertex[V, E[_] : Edge](g: Aux[V, E, S], v: V): Aux[V, E, S] = g match {
+        case NullGraph() => NullGraph[V, E, S]
+        case GCons(adj, scheme) if g.size <= 1 => NullGraph[V, E, S]
+        case GCons(adj, scheme) =>
+          //Get the neighbourhood for v if it exists, then remove all of v's edges, finally remove v
+          this.neighbourhood(g, v).fold(GCons[V, E, S](adj, scheme))(n => GCons[V, E, S](this.minusEdges(g, n.edges.toSeq:_*).adj - v, g.scheme))
+      }
 
       override def neighbourhood[V, E[_] : Edge](g: Aux[V, E, S], v: V): Option[UNeighbourhood[V, E]] = ???
 
