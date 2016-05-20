@@ -143,7 +143,7 @@ private[gdget] sealed trait SimpleGraphLike extends Graph[SimpleGraph] {
     g match {
       case NullGraph() => NullGraph[V, E]
       case GCons(adj) if g.size <= 1 => NullGraph[V, E]
-      case GCons(adj) => GCons(adj - v)
+      case GCons(adj) => GCons(adj - v) //TODO: fix this to remove neighbours of a vertex
     }
   }
 

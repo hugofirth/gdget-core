@@ -21,14 +21,15 @@ import org.gdget.data.UNeighbourhood
 import org.gdget.partitioned.ParScheme.PartitionId
 import org.gdget.{Edge, Graph}
 
+import cats.Monoid
+import cats.syntax.all._
+
 import language.higherKinds
 
 /** A logically partitioned graph type. Each vertex is labelled with its partition. */
 sealed trait LogicalParGraph[V, E[_]] {
 
   import LogicalParGraph._
-
-  //TODO: Consider switching to a type parameter, the below is killing us.
 
   /** Type for this graph's partitioning scheme */
   type S[_]
@@ -94,7 +95,7 @@ object LogicalParGraph extends LogicalParGraphInstances {
   /** Representation of an Directed Adjacency List where each entry is labelled with a partition (wrapped Int) */
   type AdjacencyList[V] = Map[V, (PartitionId, Map[V, PartitionId], Map[V, PartitionId])]
 
-  def empty[V, E[_]: Edge, S[_]: ParScheme]: LogicalParGraph[V, E] = NullGraph[V, E, S]
+  def empty[V, E[_]: Edge, S[_]: ParScheme]: LogicalParGraph.Aux[V, E, S] = NullGraph[V, E, S]
 
   def apply[V, E[_]: Edge, P[_]: Partitioner](partitioner: P[LogicalParGraph[V, E]], es: E[V]*) = ???
 
@@ -140,7 +141,19 @@ trait LogicalParGraphInstances {
 
   import LogicalParGraph._
 
-  implicit def logicalPartitionedGraph[S[_]: ParScheme]: Graph[Lambda[(A, B[_]) => LogicalParGraph.Aux[A, B, S]]] =
+
+  //TODO: Switch to MonoidK?
+  implicit def logicalParGraphMonoid[V, E[_]: Edge, S[_]: ParScheme]
+  (implicit ev: Monoid[LogicalParGraph.AdjacencyList[V]], sEv: Monoid[S[V]]): Monoid[LogicalParGraph.Aux[V, E, S]] =
+    new Monoid[LogicalParGraph.Aux[V, E, S]] {
+
+      override def combine(x: LogicalParGraph.Aux[V, E, S], y: LogicalParGraph.Aux[V, E, S]): LogicalParGraph.Aux[V, E, S] =
+        GCons[V, E, S](x.adj |+| y.adj, x.scheme |+| y.scheme)
+
+      override def empty: LogicalParGraph.Aux[V, E, S] = LogicalParGraph.empty[V, E, S]
+    }
+
+  implicit def logicalParGraph[S[_]: ParScheme]: Graph[Lambda[(A, B[_]) => LogicalParGraph.Aux[A, B, S]]] =
     new Graph[Lambda[(A, B[_]) => LogicalParGraph.Aux[A, B, S]]] {
 
       //TODO: Look at using Stream, Streaming or Seq to represent this - Iterator is mutable!
@@ -197,17 +210,23 @@ trait LogicalParGraphInstances {
       }
 
       override def minusVertex[V, E[_] : Edge](g: Aux[V, E, S], v: V): Aux[V, E, S] = g match {
-        case NullGraph() => NullGraph[V, E, S]
-        case GCons(adj, scheme) if g.size <= 1 => NullGraph[V, E, S]
+        case NullGraph() => g
         case GCons(adj, scheme) =>
-          //Get the neighbourhood for v if it exists, then remove all of v's edges, finally remove v
-          this.neighbourhood(g, v).fold(GCons[V, E, S](adj, scheme))(n => GCons[V, E, S](this.minusEdges(g, n.edges.toSeq:_*).adj - v, g.scheme))
+          //TODO: Work out why we can't use guards with the pattern match without getting type param errors.
+          if(g.size <= 1)
+            NullGraph[V, E, S]
+          else
+            //Get the neighbourhood for v if it exists, then remove all of v's edges, finally remove v
+            this.neighbourhood(g, v).fold(GCons[V, E, S](adj, scheme)) { n =>
+              GCons[V, E, S](this.minusEdges(g, n.edges.toSeq: _*).adj - v, g.scheme)
+            }
       }
 
-      override def neighbourhood[V, E[_] : Edge](g: Aux[V, E, S], v: V): Option[UNeighbourhood[V, E]] = ???
-
-
-
+      override def neighbourhood[V, E[_] : Edge](g: Aux[V, E, S], v: V): Option[UNeighbourhood[V, E]] = {
+        g.adj.get(v).map { case(part, inN, outN) =>
+          UNeighbourhood(v, inN.mapValues(id => Set(())), outN.mapValues(id => Set(())))
+        }
+      }
   }
 
 }
