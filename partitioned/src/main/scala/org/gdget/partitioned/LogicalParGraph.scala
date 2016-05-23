@@ -141,18 +141,6 @@ trait LogicalParGraphInstances {
 
   import LogicalParGraph._
 
-
-  //TODO: Switch to MonoidK?
-  implicit def logicalParGraphMonoid[V, E[_]: Edge, S[_]: ParScheme]
-  (implicit ev: Monoid[LogicalParGraph.AdjacencyList[V]], sEv: Monoid[S[V]]): Monoid[LogicalParGraph.Aux[V, E, S]] =
-    new Monoid[LogicalParGraph.Aux[V, E, S]] {
-
-      override def combine(x: LogicalParGraph.Aux[V, E, S], y: LogicalParGraph.Aux[V, E, S]): LogicalParGraph.Aux[V, E, S] =
-        GCons[V, E, S](x.adj |+| y.adj, x.scheme |+| y.scheme)
-
-      override def empty: LogicalParGraph.Aux[V, E, S] = LogicalParGraph.empty[V, E, S]
-    }
-
   implicit def logicalParGraph[S[_]: ParScheme]: Graph[Lambda[(A, B[_]) => LogicalParGraph.Aux[A, B, S]]] =
     new Graph[Lambda[(A, B[_]) => LogicalParGraph.Aux[A, B, S]]] {
 
