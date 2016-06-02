@@ -21,9 +21,6 @@ import org.gdget.data.UNeighbourhood
 import org.gdget.partitioned.ParScheme.PartitionId
 import org.gdget.{Edge, Graph}
 
-import cats.Monoid
-import cats.syntax.all._
-
 import language.higherKinds
 
 /** A logically partitioned graph type. Each vertex is labelled with its partition. */
