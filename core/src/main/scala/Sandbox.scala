@@ -26,6 +26,7 @@ object Sandbox extends App {
 
   import org.gdget.data._
   import org.gdget.std.all._
+  
   import language.higherKinds
 
   val a = Map(
@@ -61,11 +62,18 @@ object Sandbox extends App {
 
   //TODO: Work out why I have to manually annotate Tuple2[Int, Int] with its E[Int] alias?
 
-  def query: QueryIO[SimpleGraph, Int, UTuple, Option[UTuple[Int]]] =
+
+  import cats.syntax.traverse._ 
+  import cats._
+  import cats.std.all._
+
+  //TODO: Use kleisli to avoid having to flatten?
+  val query  = {  
     for {
       v <- op.get(1)
-      p <- op.traverseEdge(v.get, (1, 4))
-    } yield p
+      p <- v.traverse(op.traverseEdge(_, (1, 4)))
+    } yield p.flatten
+  }
 
   val result = query.foldMap(interpreter)
   println(s"Result is: $result")

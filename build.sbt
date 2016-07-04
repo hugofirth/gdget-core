@@ -12,7 +12,9 @@ def GdgetProject(name: String): Project = (
         "org.scalatest" %% "scalatest" % "2.2.6" % "test",
         "org.typelevel" %% "cats" % "0.4.1"
       ),
-      addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.7.1")
+      addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.7.1"),
+      addCompilerPlugin("com.milessabin" % "si2712fix-plugin" % "1.2.0" cross CrossVersion.full),
+      mainClass in (Compile, run) := Some("Sandbox")
     )
 )
 

@@ -54,7 +54,7 @@ sealed trait LogicalParGraph[V, E[_]] {
   } yield E.connect(in, v)
 
   /** Returns an iterator of sub adjancency lists */
-  def partitions = adj.groupBy { case (v, (part, inN, outN)) => part }.valuesIterator.map(GCons(_, scheme))
+  def partitions = adj.groupBy({ case (v, (part, inN, outN)) => part }).valuesIterator.map(GCons(_, scheme))
 
   /** Returns a particular sub adjacency list by index */
   def partition(idx: PartitionId) = GCons(adj.filter { case (vertex, (part, inN, outN)) => part == idx }, scheme)
