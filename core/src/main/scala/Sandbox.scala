@@ -1,6 +1,3 @@
-import org.gdget.data.query._
-import org.gdget.Edge
-
 /** gdget
   *
   * Copyright (c) 2016 Hugo Firth
@@ -18,16 +15,20 @@ import org.gdget.Edge
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+import org.gdget.data.query._
+import org.gdget.Edge
+
+import org.gdget.data._
+import org.gdget.std.all._
+import language.higherKinds
+import scala.concurrent._
+
 /** Description of Class
   *
   * @author hugofirth
   */
 object Sandbox extends App {
-
-  import org.gdget.data._
-  import org.gdget.std.all._
-  
-  import language.higherKinds
 
   val a = Map(
     1 -> (Set(2,3), Set(4,5,6)),
@@ -53,29 +54,25 @@ object Sandbox extends App {
     6 -> 3
   )
 
-
   implicitly[Edge[UTuple]]
 
   import SimpleGraph._
-
-  val op = GraphOp(b)
-
-  //TODO: Work out why I have to manually annotate Tuple2[Int, Int] with its E[Int] alias?
-
-
-  import cats.syntax.traverse._ 
+  import cats.syntax.traverse._
   import cats._
   import cats.std.all._
+  import ExecutionContext.Implicits.global
 
-  //TODO: Use kleisli to avoid having to flatten?
-  val query  = {  
+  //TODO: Use kleisli composition to avoid having to flatten at the end?
+  val query: QueryIO[SimpleGraph, Int, UTuple, Option[(Int, Int)]] = {
     for {
-      v <- op.get(1)
-      p <- v.traverse(op.traverseEdge(_, (1, 4)))
+      v <- get[SimpleGraph, Int, UTuple](1)
+      p <- v.traverse(traverseEdge[SimpleGraph, Int, UTuple](_, (1, 4)))
     } yield p.flatten
   }
 
-  val result = query.foldMap(interpreter)
-  println(s"Result is: $result")
+  val result = query.transK[Future].run(b)
+  result onSuccess {
+    case Some(edge) => println(s"Result is: $edge")
+  }
 
 }
