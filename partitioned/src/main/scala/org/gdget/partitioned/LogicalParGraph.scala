@@ -24,12 +24,9 @@ import org.gdget.{Edge, Graph}
 import language.higherKinds
 
 /** A logically partitioned graph type. Each vertex is labelled with its partition. */
-sealed trait LogicalParGraph[V, E[_]] {
+sealed trait LogicalParGraph[S[_], V, E[_]] {
 
   import LogicalParGraph._
-
-  /** Type for this graph's partitioning scheme */
-  type S[_]
 
   private[gdget] def adj: AdjacencyList[V]
 
@@ -59,7 +56,7 @@ sealed trait LogicalParGraph[V, E[_]] {
   /** Returns a particular sub adjacency list by index */
   def partition(idx: PartitionId) = GCons(adj.filter { case (vertex, (part, inN, outN)) => part == idx }, scheme)
 
-  def partitionOf(v: V) = S.getPartition(scheme, v)
+  def partitionOf(v: V) = adj.get(v).fold(None: Option[PartitionId]){ case (part, inN, outN) => Some(part)}
 
   /** Method to "move" a vertex from one logical partition to another */
   def updatePartition(v: V, idx: PartitionId) = {
@@ -87,39 +84,36 @@ sealed trait LogicalParGraph[V, E[_]] {
 object LogicalParGraph extends LogicalParGraphInstances {
 
   /** Aux type alias to simplify including S type refinements for LogicalParGraphs */
-  type Aux[V, E[_], S0[_]] = LogicalParGraph[V, E] { type S[a] = S0[a] }
+  //type Aux[V, E[_], S0[_]] = LogicalParGraph[V, E] { type S[a] = S0[a] }
 
   /** Representation of an Directed Adjacency List where each entry is labelled with a partition (wrapped Int) */
   type AdjacencyList[V] = Map[V, (PartitionId, Map[V, PartitionId], Map[V, PartitionId])]
 
-  def empty[V, E[_]: Edge, S[_]: ParScheme]: LogicalParGraph.Aux[V, E, S] = NullGraph[V, E, S]
+  def empty[S[_]: ParScheme, V, E[_]: Edge]: LogicalParGraph[S, V, E] = NullGraph[S, V, E]
 
-  def apply[V, E[_]: Edge, P[_]: Partitioner](partitioner: P[LogicalParGraph[V, E]], es: E[V]*) = ???
+  def apply[S[_]: ParScheme, V, E[_]: Edge](partitioner: S[V], es: E[V]*) = ???
 
   /** Non-empty "Constructor" type of LogicalParGraph */
-  private[gdget] final case class GCons[V, E[_], S0[_]](adj: AdjacencyList[V], scheme: S0[V])
-                                                       (implicit val S: ParScheme[S0], val E: Edge[E])
-    extends LogicalParGraph[V, E] {
-
-      override type S[a] = S0[a]
+  private[gdget] final case class GCons[S[_]: ParScheme, V, E[_]: Edge](adj: AdjacencyList[V], scheme: S[V])
+                                                       (implicit val S: ParScheme[S], val E: Edge[E])
+    extends LogicalParGraph[S, V, E] {
 
       lazy val size: Int = vertices.size
       lazy val order: Int = edges.size
     }
-
-  private[gdget] case object NullGraph extends LogicalParGraph[Nothing, Lambda[A => (Nothing, Nothing)]] {
+  
+  //TODO: Work out whether we want Lambda[A => Map[Nothing, PartitionId]] or Map[?, PartitionId]. Does it matter?
+  private[gdget] case object NullGraph extends LogicalParGraph[Map[?, PartitionId],
+                                                               Nothing, Lambda[A => (Nothing, Nothing)]] {
 
     /** Adapter type for which there exists an Edge instance (Tuple2[Nothing, Nothing]) */
     type EA[a] = (Nothing, Nothing)
 
     private[gdget] implicit def E = Edge[EA]
 
-    /** Adapter type for which there exists a PartitionScheme instance Map[Nothing, Int] */
-    override type S[_] = Map[Nothing, PartitionId]
-
     private[gdget] def scheme: Map[Nothing, PartitionId] = Map.empty[Nothing, PartitionId]
 
-    private[gdget] implicit def S = ParScheme[S]
+    private[gdget] implicit def S = ParScheme[Map[?, PartitionId]]
 
     val size = 0
     val order = 0
@@ -127,9 +121,9 @@ object LogicalParGraph extends LogicalParGraphInstances {
     private[gdget] val adj: AdjacencyList[Nothing] =
       Map.empty[Nothing, (PartitionId, Map[Nothing, PartitionId], Map[Nothing, PartitionId])]
 
-    def unapply[V, E[_]: Edge, S0[_]: ParScheme](g: LogicalParGraph.Aux[V, E, S0]): Boolean = g eq this
+    def unapply[S[_]: ParScheme, V, E[_]: Edge](g: LogicalParGraph[S, V, E]): Boolean = g eq this
 
-    def apply[V, E[_]: Edge, S0[_]: ParScheme]: LogicalParGraph.Aux[V, E, S0] = this.asInstanceOf[LogicalParGraph.Aux[V, E, S0]]
+    def apply[S[_]: ParScheme, V, E[_]: Edge]: LogicalParGraph[S, V, E] = this.asInstanceOf[LogicalParGraph[S, V, E]]
   }
 }
 
@@ -138,40 +132,43 @@ trait LogicalParGraphInstances {
 
   import LogicalParGraph._
 
-  implicit def logicalParGraph[S[_]: ParScheme]: Graph[Lambda[(A, B[_]) => LogicalParGraph.Aux[A, B, S]]] =
-    new Graph[Lambda[(A, B[_]) => LogicalParGraph.Aux[A, B, S]]] {
+  implicit def logicalParGraph[S[_]: ParScheme]: Graph[Lambda[(A, B[_]) => LogicalParGraph[S, A, B]]] =
+    new Graph[Lambda[(A, B[_]) => LogicalParGraph[S, A, B]]] {
+
+
 
       //TODO: Look at using Stream, Streaming or Seq to represent this - Iterator is mutable!
-      override def vertices[V, E[_] : Edge](g: Aux[V, E, S]): Iterator[V] = g.vertices
+      override def vertices[V, E[_] : Edge](g: LogicalParGraph[S, V, E]): Iterator[V] = g.vertices
 
-      override def edges[V, E[_] : Edge](g: Aux[V, E, S]): Iterator[E[V]] = g.edges
+      override def edges[V, E[_] : Edge](g: LogicalParGraph[S, V, E]): Iterator[E[V]] = g.edges
 
-      override def plusEdge[V, E[_] : Edge](g: Aux[V, E, S], e: E[V]): Aux[V, E, S] = {
+//      override def plusEdge[V, E[_] : Edge](g: Aux[V, E, S], e: E[V]): Aux[V, E, S] = {
+//
+//        //TODO: Reason about the below in the presence of self-loops when you have a moment, suspect broken
+//        //Get the left hand vertex of Edge e
+//        val l = Edge[E].left(e)
+//        //Get the right hand vertex of Edge e
+//        val r = Edge[E].right(e)
+//        //Get the neighbourhood of l from g if it exists
+//        val lN = g.adj.get(l)
+//        //Get the neighbourhood of r from g if it exists
+//        val rN = g.adj.get(r)
+//        //Get the partitions for vertices l & r
+//
+//        val lPart = lN.fold(ParScheme[S].getPartition(g.scheme, l, g)._2)(_._1)
+//        val rPart = rN.fold(ParScheme[S].getPartition(g.scheme, r, g)._2)(_._1)
+//        //Add r to the outgoing neighbours (l->r convention) of l either in an existing or empty neighbourhood
+//        val dAdj = lN.fold(g.adj + (l -> (lPart, Map.empty[V, PartitionId], Map(r -> rPart)))) { case (part, inN, outN) =>
+//          g.adj + (l -> (part, inN, outN + (r -> rPart)))
+//        }
+//        //Add l to the incoming neighbours (l->r convention) of r either in an existing or empty neighbourhood
+//        val ddAdj = rN.fold(dAdj + (r -> (rPart, Map(l -> lPart), Map.empty[V, PartitionId]))) { case (part, inN, outN) =>
+//          dAdj + (r -> (part, inN + (l -> lPart), outN))
+//        }
+//        GCons[V, E, S](ddAdj, g.scheme)
+//      }
 
-        //TODO: Reason about the below in the presence of self-loops when you have a moment, suspect broken
-        //Get the left hand vertex of Edge e
-        val l = Edge[E].left(e)
-        //Get the right hand vertex of Edge e
-        val r = Edge[E].right(e)
-        //Get the neighbourhood of l from g if it exists
-        val lN = g.adj.get(l)
-        //Get the neighbourhood of r from g if it exists
-        val rN = g.adj.get(r)
-        //Get the partitions for vertices l & r
-        val lPart = lN.fold(ParScheme[S].getPartition(g.scheme, l))(_._1)
-        val rPart = rN.fold(ParScheme[S].getPartition(g.scheme, r))(_._1)
-        //Add r to the outgoing neighbours (l->r convention) of l either in an existing or empty neighbourhood
-        val dAdj = lN.fold(g.adj + (l -> (lPart, Map.empty[V, PartitionId], Map(r -> rPart)))) { case (part, inN, outN) =>
-          g.adj + (l -> (part, inN, outN + (r -> rPart)))
-        }
-        //Add l to the incoming neighbours (l->r convention) of r either in an existing or empty neighbourhood
-        val ddAdj = rN.fold(dAdj + (r -> (rPart, Map(l -> lPart), Map.empty[V, PartitionId]))) { case (part, inN, outN) =>
-          dAdj + (r -> (part, inN + (l ->lPart), outN))
-        }
-        GCons[V, E, S](ddAdj, g.scheme)
-      }
-
-      override def minusEdge[V, E[_] : Edge](g: Aux[V, E, S], e: E[V]): Aux[V, E, S] = {
+      override def minusEdge[V, E[_] : Edge](g: LogicalParGraph[S, V, E], e: E[V]): LogicalParGraph[S, V, E] = {
         //Get the left hand vertex of Edge e
         val l = Edge[E].left(e)
         //Get the right hand vertex of Edge e
@@ -180,38 +177,40 @@ trait LogicalParGraphInstances {
         val dAdj = g.adj.get(l).fold(g.adj) { case (part, inN, outN) => g.adj.updated(l, (part, inN, outN - r)) }
         //Get the nieghbourhood for r and remove l from incoming neighbours. If the neighbourhoos does not exist do nothing.
         val ddAdj = dAdj.get(r).fold(dAdj) { case (part, inN, outN) => g.adj.updated(r, (part, inN - l, outN)) }
-        GCons[V, E, S](ddAdj, g.scheme)
+        GCons[S, V, E](ddAdj, g.scheme)
       }
 
-      override def plusVertex[V, E[_] : Edge](g: Aux[V, E, S], v: V): Aux[V, E, S] = {
-        val part = g.partitionOf(v)
-        //TODO: Work out why type inferencer gives up on us at this point?
-        g match {
-          case NullGraph() =>
-            GCons[V, E, S](Map(v -> (part, Map.empty[V, PartitionId], Map.empty[V, PartitionId])), g.scheme)
-          case GCons(adj, scheme) =>
-            GCons[V, E, S](adj + (v -> adj.getOrElse(v, (part, Map.empty[V, PartitionId], Map.empty[V, PartitionId]))), g.scheme)
-        }
-      }
+//      override def plusVertex[V, E[_] : Edge](g: Aux[V, E, S], v: V): Aux[V, E, S] = {
+//        val (parScheme, part) = ParScheme[S].getPartition(g.scheme, v, g)
+//        //TODO: Work out why type inferencer gives up on us at this point?
+//        g match {
+//          case NullGraph() =>
+//            GCons[V, E, S](Map(v -> (part, Map.empty[V, PartitionId], Map.empty[V, PartitionId])), parScheme)
+//          case GCons(adj, scheme) =>
+//            GCons[V, E, S](adj + (v -> adj.getOrElse(v, (part, Map.empty[V, PartitionId], Map.empty[V, PartitionId]))), parScheme)
+//        }
+//      }
 
-      override def minusVertex[V, E[_] : Edge](g: Aux[V, E, S], v: V): Aux[V, E, S] = g match {
+      override def minusVertex[V, E[_] : Edge](g: LogicalParGraph[S, V, E], v: V): LogicalParGraph[S, V, E] = g match {
         case NullGraph() => g
         case GCons(adj, scheme) =>
-          //TODO: Work out why we can't use guards with the pattern match without getting type param errors.
-          if(g.size <= 1)
-            NullGraph[V, E, S]
-          else
-            //Get the neighbourhood for v if it exists, then remove all of v's edges, finally remove v
-            this.neighbourhood(g, v).fold(GCons[V, E, S](adj, scheme)) { n =>
-              GCons[V, E, S](this.minusEdges(g, n.edges.toSeq: _*).adj - v, g.scheme)
-            }
+          neighbourhood(g, v) match {
+              case Some(n) if g.size <= 1 => NullGraph[S, V, E]
+              case Some(n) => GCons[S, V, E](this.minusEdges(g, n.edges.toSeq: _*).adj - v, g.scheme)
+              case None => g
+          }
+        //TODO: Work out why we can't use guards with the pattern match without getting type param errors.
       }
 
-      override def neighbourhood[V, E[_] : Edge](g: Aux[V, E, S], v: V): Option[UNeighbourhood[V, E]] = {
+      override def neighbourhood[V, E[_] : Edge](g: LogicalParGraph[S, V, E], v: V): Option[UNeighbourhood[V, E]] = {
         g.adj.get(v).map { case(part, inN, outN) =>
           UNeighbourhood(v, inN.mapValues(id => Set(())), outN.mapValues(id => Set(())))
         }
       }
-  }
+
+      override def plusEdge[V, E[_] : Edge](g: LogicalParGraph[S, V, E], e: E[V]): LogicalParGraph[S, V, E] = ???
+
+      override def plusVertex[V, E[_] : Edge](g: LogicalParGraph[S, V, E], v: V): LogicalParGraph[S, V, E] = ???
+    }
 
 }

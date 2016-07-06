@@ -17,14 +17,18 @@
   */
 package org.gdget.partitioned
 
+import cats.data.State
 import language.higherKinds
+
+import org.gdget.{Graph, Edge}
 
 /** Simple typeclass for vertex => PartitionId mappings */
 trait ParScheme[S[_]]{
 
   import ParScheme._
 
-  def getPartition[V](scheme: S[V], vertex: V): PartitionId
+  //TODO: Use State here - but its a pain in the ass
+  def getPartition[G[_, _[_]]: Graph, E[_]: Edge, V](scheme: S[V], vertex: V, graph: G[V, E]): (S[V], PartitionId)
 }
 
 object ParScheme {
@@ -40,11 +44,12 @@ object ParScheme {
     /** Default partition index if a  */
     private val defaultPartition = PartitionId(0)
 
-    override def getPartition[V](scheme: Map[V, PartitionId], vertex: V): PartitionId = scheme.getOrElse(vertex, defaultPartition)
+    override def getPartition[G[_, _[_]]: Graph, E[_]: Edge, V](scheme: Map[V, PartitionId], vertex: V, graph: G[V, E]): (Map[V, PartitionId], PartitionId) =
+      (scheme, scheme.getOrElse(vertex, defaultPartition))
   }
 
   /** Default instance for (V) => Int */
   implicit val fun1Scheme: ParScheme[? => PartitionId] = new ParScheme[? => PartitionId] {
-    override def getPartition[V](scheme: (V) => PartitionId, vertex: V): PartitionId = scheme(vertex)
+    override def getPartition[G[_, _[_]]: Graph, E[_]: Edge, V](scheme: (V) => PartitionId, vertex: V, graph: G[V, E]): ((V) => PartitionId, PartitionId) = (scheme, scheme(vertex))
   }
 }

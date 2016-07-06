@@ -26,6 +26,7 @@ import scala.concurrent.duration._
 
 
 /** Simple proof of concept of a thread-partitioned main-memory graph */
+//TODO: Cleanup below once I work out what its doing ?
 sealed trait ParGraph[G[_, _[_]], V, E[_]] {
 
   /** Make sure that G has a Graph */
