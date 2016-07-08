@@ -83,6 +83,9 @@ object Sandbox extends App {
 
   //TODO: Use kleisli composition to avoid having to flatten at the end?
 
+  //TODO: What about a Queryable function which takes a Graph and a ParScheme. Perhaps also an implicit QueryBuilder
+  //  which I could then use to prop up type inference?
+
   def query[S[_]: ParScheme]: QueryIO[LogicalParGraph[S, ?, ?[_]], Int, UTuple, Option[(Int, Int)]] = {
     for {
       v <- get[LogicalParGraph[S, ?, ?[_]], Int, UTuple](1)
