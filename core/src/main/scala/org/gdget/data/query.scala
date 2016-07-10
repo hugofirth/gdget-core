@@ -48,12 +48,11 @@ object query {
     * `Kleisli[M, G[V, E], A]`. Fair warning, this approach is lifted from how tpolecat does all things ''Free'' in
     * [[https://github.com/tpolecat/doobie Doobie]]. I don't yet understand all its nuance and potential pitfalls.
     *
-    * TODO: update This comment as we understand generic Kleisli based approach to Free interpreters.
     */
   sealed trait QueryOp[G[_, _[_]], V, E[_], A] {
 
     //TODO: Check .pure() is the right method here and equiv to Capture[M].apply in doobie
-    protected def op[M[_]: Monad](f: G[V, E] => A)(implicit gEv: Graph[G], eEv: Edge[E]): Kleisli[M, G[V, E], A] =
+    def op[M[_]: Monad](f: G[V, E] => A)(implicit gEv: Graph[G], eEv: Edge[E]): Kleisli[M, G[V, E], A] =
       Kleisli((g: G[V, E]) => Monad[M].pure(f(g)))
 
     def defaultTransK[M[_]: Monad](implicit gEv: Graph[G], eEv: Edge[E]): Kleisli[M, G[V, E], A]
@@ -104,16 +103,21 @@ object query {
 
   /** Syntax enrichment for `QueryIO` */
   implicit class QueryIOOps[G[_, _[_]]: Graph, V, E[_]: Edge, A](fa: QueryIO[G, V, E, A]) {
-    def transK[M[_]: Monad]: Kleisli[M, G[V, E], A] = transformK[M, G, V, E].apply(fa)
+    def transK[M[_]: Monad]: Kleisli[M, G[V, E], A] = transformK[M, G, V, E](interpretK).apply(fa)
+
+    def transKWith[M[_]: Monad](interp: QueryOp[G, V, E, ?] ~> Kleisli[M, G[V, E], ?]): Kleisli[M, G[V, E], A] = 
+      transformK[M, G, V, E](interp).apply(fa)
   }
 
-  def transformK[M[_]: Monad, G[_, _[_]]: Graph, V, E[_]: Edge]: QueryIO[G, V, E, ?] ~> Kleisli[M, G[V, E], ?] =
-    new (QueryIO[G, V, E, ?] ~> Kleisli[M, G[V, E], ?]) {
-      override def apply[A](fa: QueryIO[G, V, E, A]): Kleisli[M, G[V, E], A] = fa.foldMap(interpretK[M, G, V, E])
-    }
+  /** FoldMaps chosen interpreter over queries constructed from several QueryOp objects (QueryIO) */
+  def transformK[M[_]: Monad, G[_, _[_]]: Graph, V, E[_]: Edge]
+    (interp: QueryOp[G, V, E, ?] ~> Kleisli[M, G[V, E], ?]): QueryIO[G, V, E, ?] ~> Kleisli[M, G[V, E], ?] =
+      new (QueryIO[G, V, E, ?] ~> Kleisli[M, G[V, E], ?]) {
+        override def apply[A](fa: QueryIO[G, V, E, A]): Kleisli[M, G[V, E], A] = fa.foldMap(interp)
+      }
 
-  /** TODO: Copy how Doobie has a default interpreter which consumes a ResultSet to make a default interpreter which "consumes"
-    * an object with an implicit Graph */
+  /** Default Interpreter which transforms a QuerOp into a Kliesli function which takes a Graph G[V, E] and produces an 
+   *  object of the desired result type, wrapped in provided Monad M[?] */
   def interpretK[M[_]: Monad, G[_, _[_]]: Graph, V, E[_]: Edge] = new (QueryOp[G, V, E, ?] ~> Kleisli[M, G[V, E], ?]) {
 
     def apply[A](fa: QueryOp[G, V, E, A]): Kleisli[M, G[V, E], A] = fa.defaultTransK[M]

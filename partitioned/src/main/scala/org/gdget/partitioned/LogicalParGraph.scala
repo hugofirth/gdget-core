@@ -90,6 +90,10 @@ object LogicalParGraph extends LogicalParGraphInstances {
 
 
   def apply[S[_]: ParScheme, V, E[_]: Edge](scheme: S[V], es: E[V]*) = {
+    //TODO: Pass in the scheme so that the partitions are actually different.
+    // Option 1, make NullGraph take a scheme so that all the code which takes a scheme from a g which may be a NullGraph actually works.
+    // Option 2, Remove the need for a scheme and move to the V: ParVertex setup where each vertex added has a partition
+    // Option 3 ... ? 
     es.foldLeft(NullGraph[S, V, E])((g, e) => Graph[LogicalParGraph[S, ?, ?[_]]].plusEdge(g, e))
   }
 
