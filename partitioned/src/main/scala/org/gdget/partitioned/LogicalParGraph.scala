@@ -39,6 +39,8 @@ sealed trait LogicalParGraph[S[_], V, E[_]] {
   def size: Int
   def order: Int
 
+  def isEmpty: Boolean
+
   def vertices = adj.keys.iterator
 
   /** Returns an iterator of E[V], using the connect() constructor of the Edge typeclass to create edges in the right
@@ -86,7 +88,7 @@ object LogicalParGraph extends LogicalParGraphInstances {
   /** Representation of an Directed Adjacency List where each entry is labelled with a partition (wrapped Int) */
   type AdjacencyList[V] = Map[V, (PartId, Map[V, PartId], Map[V, PartId])]
 
-  def empty[S[_]: ParScheme ,V, E[_]: Edge]: LogicalParGraph[S, V, E] = NullGraph[S, V, E]
+  def empty[S[_]: ParScheme ,V, E[_]: Edge](scheme: S[V]): LogicalParGraph[S, V, E] = NullGraph[S, V, E](scheme)
 
 
   def apply[S[_]: ParScheme, V, E[_]: Edge](scheme: S[V], es: E[V]*) = {
@@ -94,7 +96,7 @@ object LogicalParGraph extends LogicalParGraphInstances {
     // Option 1, make NullGraph take a scheme so that all the code which takes a scheme from a g which may be a NullGraph actually works.
     // Option 2, Remove the need for a scheme and move to the V: ParVertex setup where each vertex added has a partition
     // Option 3 ... ? 
-    es.foldLeft(NullGraph[S, V, E])((g, e) => Graph[LogicalParGraph[S, ?, ?[_]]].plusEdge(g, e))
+    es.foldLeft(empty[S, V, E](scheme))((g, e) => Graph[LogicalParGraph[S, ?, ?[_]]].plusEdge(g, e))
   }
 
   /** Non-empty "Constructor" type of LogicalParGraph */
@@ -105,33 +107,22 @@ object LogicalParGraph extends LogicalParGraphInstances {
 
       lazy val size: Int = vertices.size
       lazy val order: Int = edges.size
+
+      def isEmpty = false
     }
 
   //TODO: Work out whether we want Lambda[A => Map[Nothing, PartitionId]] or Map[?, PartitionId]. Does it matter?
 
-  private[gdget] case object NullGraph extends LogicalParGraph[Map[?, PartId],
-                                                               Nothing, Lambda[A => (Nothing, Nothing)]] {
-
-
-    /** Adapter type for which there exists an Edge instance (Tuple2[Nothing, Nothing]) */
-    type EA[a] = (Nothing, Nothing)
-
-    private[gdget] implicit def E = Edge[EA]
-
-    private[gdget] def scheme: Map[Nothing, PartId] = Map.empty[Nothing, PartId]
-
-    //TODO: Why does ParScheme[Map[?, PartId]] cause ambigious implicits error
-    private[gdget] implicit def S = ParScheme.mapInstance
+  private[gdget] case class NullGraph[S[_], V, E[_]](scheme: S[V])(implicit val S: ParScheme[S], val E: Edge[E]) 
+    extends LogicalParGraph[S, V, E] {
 
     val size = 0
     val order = 0
 
-    private[gdget] val adj: AdjacencyList[Nothing] =
-      Map.empty[Nothing, (PartId, Map[Nothing, PartId], Map[Nothing, PartId])]
+    def isEmpty = true 
 
-    def unapply[S[_]: ParScheme, V, E[_]: Edge](g: LogicalParGraph[S, V, E]): Boolean = g eq this
+    private[gdget] val adj: AdjacencyList[V] = Map.empty[V, (PartId, Map[V, PartId], Map[V, PartId])]
 
-    def apply[S[_]: ParScheme, V, E[_]: Edge]: LogicalParGraph[S, V, E] = this.asInstanceOf[LogicalParGraph[S, V, E]]
   }
 }
 
@@ -190,7 +181,7 @@ trait LogicalParGraphInstances {
         val (parScheme, part) = ParScheme[S].getPartition(g.scheme, v, g)
         //TODO: Work out why type inferencer gives up on us at this point?
         g match {
-          case NullGraph() =>
+          case NullGraph(s) =>
             GCons[S, V, E](Map(v -> (part, Map.empty[V, PartId], Map.empty[V, PartId])), parScheme)
           case GCons(adj, scheme) =>
             GCons[S, V, E](adj + (v -> adj.getOrElse(v,
@@ -199,10 +190,10 @@ trait LogicalParGraphInstances {
       }
 
       override def minusVertex[V, E[_] : Edge](g: LogicalParGraph[S, V, E], v: V): LogicalParGraph[S, V, E] = g match {
-        case NullGraph() => g
+        case NullGraph(s) => g
         case GCons(adj, scheme) =>
           neighbourhood(g, v) match {
-              case Some(n) if g.size <= 1 => NullGraph[S, V, E]
+              case Some(n) if g.size <= 1 => NullGraph[S, V, E](scheme)
               case Some(n) => GCons[S, V, E](this.minusEdges(g, n.edges.toSeq: _*).adj - v, scheme)
               case None => g
           }
