@@ -26,6 +26,10 @@ import org.gdget.{Graph, Edge}
 trait ParScheme[S[_]]{
 
   import ParScheme._
+  
+  //Some kind of default method here. May take no parameters, or a vertex, or an edge, or possibly just a type param.
+  // Try and find other parameterless methods on typeclasses in Cats and Scalaz.
+  def default[V]: S[V]
 
   //TODO: Use State here - but its a pain in the ass
   def getPartition[G[_, _[_]]: Graph, E[_]: Edge, V](scheme: S[V], vertex: V, graph: G[V, E]): (S[V], PartId)
@@ -42,11 +46,14 @@ object ParScheme {
     def part = PartId(id)
   }
 
+
+  /** default partition index if a vertex does not belong to the domain of the getPartition function */
+  private val defaultPartition = 0.part
+
   /** default instance for Map[V, Int] */
   implicit val mapInstance: ParScheme[Map[?, PartId]] = new ParScheme[Map[?, PartId]] {
-      
-    /** default partition index if a vertex cannot be found in the Map */
-    private val defaultPartition = 0.part
+
+    override def default[V] = Map.empty[V, PartId]
       
     override def getPartition[G[_, _[_]]: Graph, E[_]: Edge, V](scheme: Map[V, PartId],
                                                                 vertex: V, graph: G[V, E]): (Map[V, PartId], PartId) =
@@ -55,6 +62,9 @@ object ParScheme {
       
   /** default instance for (V) => Int */
   implicit val fun1sScheme: ParScheme[? => PartId] = new ParScheme[? => PartId] {
+    
+    override def default[V] = (v: V) => defaultPartition
+
     override def getPartition[G[_, _[_]]: Graph, E[_]: Edge, V](scheme: (V) => PartId,
                                                                 vertex: V,
                                                                 graph: G[V, E]): ((V) => PartId, PartId) =

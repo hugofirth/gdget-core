@@ -45,6 +45,8 @@ trait PartitionedGraphInstances {
 
       import ExecutionContext.Implicits.global
 
+      override def point[V, E[_]: Edge](e: E[V]): ParGraph[G, V, E] = ???
+
       //TODO: How best to do this? Simple lazy op like below cheaper sync, but in general Futures or Actors?
 
       override def vertices[V, E[_] : Edge](g: ParGraph[G, V, E]): Iterator[V] =

@@ -38,6 +38,13 @@ trait Graph[G[_, _[_]]] extends Any with Serializable {
   def vertices[V, E[_]: Edge](g: G[V, E]): Iterator[V]
   def edges[V, E[_]: Edge](g: G[V, E]): Iterator[E[V]]
 
+  /** Constructor method for Graph instances, lifting an edge into a graph. Note that in gdget we consider the edge to 
+   *  be the fundamental unit of a graph, not a vertex */
+  //TODO: Point/pure is a method on Monad/Applicative in cats to lift a value into a context. As this is what we are
+  //  doing here perhaps we need to revisit the idea of Graph as a Monad? Some contention over whether Set is a Monad, 
+  //  and one view of a Graph is as a set of edges. 
+  def point[V, E[_]: Edge](e: E[V]): G[V, E]
+
   /**
     *
     * WARNING: Where appropriate should be overridden in typeclass instances to improve performance (for example if a

@@ -124,6 +124,8 @@ private[gdget] sealed trait SimpleGraphLike extends Graph[SimpleGraph] {
 
   import SimpleGraph._
 
+  override def point[V, E[_]: Edge](e: E[V]): SimpleGraph[V, E] = SimpleGraph(e)
+
   //TODO: Use pattern matching to check for NullGraph as a performance optimisation
   //TODO: Investigate Specialization?
   //TODO: Look at using Stream, Streaming or Seq to represent this - Iterator is mutable!

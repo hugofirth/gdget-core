@@ -99,6 +99,11 @@ object LogicalParGraph extends LogicalParGraphInstances {
     es.foldLeft(empty[S, V, E](scheme))((g, e) => Graph[LogicalParGraph[S, ?, ?[_]]].plusEdge(g, e))
   }
 
+  /** Overloaded apply method to construct LogicalParGraph with a default instance of type S[V] */
+  def apply[S[_]: ParScheme, V, E[_]: Edge](es: E[V]*) = {
+    es.foldLeft(empty[S, V, E](ParScheme[S].default[V]))((g, e) => Graph[LogicalParGraph[S, ?, ?[_]]].plusEdge(g, e))
+  }
+
   /** Non-empty "Constructor" type of LogicalParGraph */
   //TODO: Investigate if this is where we should be using Unapply?
   private[gdget] final case class GCons[S[_], V, E[_]](adj: AdjacencyList[V], scheme: S[V])
@@ -134,6 +139,9 @@ trait LogicalParGraphInstances {
   //TODO: Investigate if here is where we want the Unapply?
   implicit def logicalParGraph[S[_]: ParScheme]: Graph[LogicalParGraph[S, ?, ?[_]]] =
     new Graph[LogicalParGraph[S, ?, ?[_]]] {
+
+      //TODO: Stop needing a parScheme object. Just a typeclass instance should do?
+      override def point[V, E[_]: Edge](e: E[V]): LogicalParGraph[S, V, E] = LogicalParGraph[S, V, E](e)  
 
       //TODO: Look at using Stream, Streaming or Seq to represent this - Iterator is mutable!
       override def vertices[V, E[_] : Edge](g: LogicalParGraph[S, V, E]): Iterator[V] = g.vertices
