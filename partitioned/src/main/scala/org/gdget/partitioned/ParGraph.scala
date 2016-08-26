@@ -18,53 +18,39 @@
 package org.gdget.partitioned
 
 import org.gdget.data.UNeighbourhood
+import org.gdget.partitioned.ParScheme.PartId
 import org.gdget.{Edge, Graph}
 
 import language.higherKinds
-import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.concurrent.duration._
+import scala.annotation.implicitNotFound
 
 
-/** Simple proof of concept of a thread-partitioned main-memory graph */
-//TODO: Cleanup below once I work out what its doing ?
-sealed trait ParGraph[G[_, _[_]], V, E[_]] {
+/** Simple typeclass for vertex partitioned graphs */
+@implicitNotFound("No member of type class ParGraph found for type ${G}")
+trait ParGraph[G[_, _[_]]] extends Graph[G]{
 
-  /** Make sure that G has a Graph */
-  implicit def G: Graph[G]
+  /** The number of partitions in the ParGraph
+    *
+    * Note: Whilst this could be more naturally exposed as partitions.size, in some implementations (e.g. LogicalParGraph)
+    * this would lead to an O(|V|) operation, which is daft. I'm not even going to use partitions.size as a default impl
+    * in order to avoid te Gotcha.
+    */
+  def numPartitions[V, E[_]: Edge](g: G[V, E]): Int
 
-  /** The partitions themselves, index accessible */
-  def partitions: Vector[G[V, E]]
+  /** The partitions of a graph themselves, index accessible */
+  def partitions[V, E[_]: Edge](g: G[V, E]): Vector[G[V, E]]
+
+  /** Returns the partition id associated with a specific vertex */
+  def partitionOf[V, E[_]: Edge](g: G[V, E], v: V): Option[PartId]
+
+  /** Moves a vertex from one partition to another */
+  def updatePartitionOf[V, E[_]: Edge](g: G[V, E], v: V, idx: PartId): G[V, E]
 }
 
-object ParGraph extends PartitionedGraphInstances
-
-trait PartitionedGraphInstances {
-
-  implicit def partitionedGraphLike[G[_, _[_]]: Graph]: Graph[ParGraph[G, ?, ?[_]]] =
-    new Graph[ParGraph[G, ?, ?[_]]] {
-
-      import ExecutionContext.Implicits.global
-
-      override def point[V, E[_]: Edge](e: E[V]): ParGraph[G, V, E] = ???
-
-      //TODO: How best to do this? Simple lazy op like below cheaper sync, but in general Futures or Actors?
-
-      override def vertices[V, E[_] : Edge](g: ParGraph[G, V, E]): Iterator[V] =
-       Await.result(Future.reduce(g.partitions.map(p => Future { Graph[G].vertices(p) }))(_ ++ _), Duration.Inf)
-
-      override def minusEdge[V, E[_] : Edge](g: ParGraph[G, V, E], e: E[V]): ParGraph[G, V, E] = ???
-
-      override def edges[V, E[_] : Edge](g: ParGraph[G, V, E]): Iterator[E[V]] = ???
-
-      override def plusEdge[V, E[_] : Edge](g: ParGraph[G, V, E], e: E[V]): ParGraph[G, V, E] = ???
-
-      override def minusVertex[V, E[_] : Edge](g: ParGraph[G, V, E], v: V): ParGraph[G, V, E] = ???
-
-      override def neighbourhood[V, E[_] : Edge](g: ParGraph[G, V, E], v: V): Option[UNeighbourhood[V, E]] = ???
-
-      override def plusVertex[V, E[_] : Edge](g: ParGraph[G, V, E], v: V): ParGraph[G, V, E] = ???
-    }
+object ParGraph {
+  @inline def apply[G[_, _[_]]: ParGraph]: ParGraph[G] = implicitly[ParGraph[G]]
 }
+
 
 
 

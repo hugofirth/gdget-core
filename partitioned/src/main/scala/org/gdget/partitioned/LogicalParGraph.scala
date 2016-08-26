@@ -24,8 +24,7 @@ import org.gdget.{Edge, Graph}
 import language.higherKinds
 
 /** A logically partitioned graph type. Each vertex is labelled with its partition. */
-sealed trait LogicalParGraph[S[_], V, E[_]] {
-
+sealed trait LogicalParGraph[S[_], V, E[_]] { self =>
   import LogicalParGraph._
 
   private[gdget] def adj: AdjacencyList[V]
@@ -78,7 +77,7 @@ sealed trait LogicalParGraph[S[_], V, E[_]] {
         //Update the neighbourhoods for each neighbour of v in the adjacency list
         val d2Adj = (inN ++ outN).foldLeft(dAdj)((acc, entry) => updateNeighbourPartition(entry._1, v, idx, acc))
         GCons(d2Adj, scheme)
-      case _ => GCons(adj, scheme) //If the vertex does not exist, or the new partition idx is the same as the old: do nothing.
+      case _ => self //If the vertex does not exist, or the new partition idx is the same as the old: do nothing.
     }
   }
 }
@@ -137,8 +136,26 @@ trait LogicalParGraphInstances {
   import LogicalParGraph._
 
   //TODO: Investigate if here is where we want the Unapply?
-  implicit def logicalParGraph[S[_]: ParScheme]: Graph[LogicalParGraph[S, ?, ?[_]]] =
-    new Graph[LogicalParGraph[S, ?, ?[_]]] {
+  implicit def logicalParGraph[S[_]: ParScheme]: ParGraph[LogicalParGraph[S, ?, ?[_]]] =
+    new ParGraph[LogicalParGraph[S, ?, ?[_]]] {
+
+      private def assign[V, E[_]: Edge](v: V, g: LogicalParGraph[S, V, E], p: PartId, scheme: S[V]) = g match {
+        //TODO: Work out why type inferencer gives up on us at this point?
+        case NullGraph(_) =>
+          GCons[S, V, E](Map(v -> (p, Map.empty[V, PartId], Map.empty[V, PartId])), scheme)
+        case GCons(adj, _) =>
+          GCons[S, V, E](adj + (v -> adj.getOrElse(v,
+            (p, Map.empty[V, PartId], Map.empty[V, PartId]))), scheme)
+      }
+
+      /** The partitions themselves, index accessible */
+      override def partitions[V, E[_] : Edge](g: LogicalParGraph[S, V, E]): Vector[LogicalParGraph[S, V, E]] = g.partitions.toVector
+
+      /** Returns the partition id associated with a specific vertex */
+      override def partitionOf[V, E[_] : Edge](g: LogicalParGraph[S, V, E], v: V): Option[PartId] = g.partitionOf(v)
+
+      /** Moves a vertex from one partition to another */
+      override def updatePartitionOf[V, E[_] : Edge](g: LogicalParGraph[S, V, E], v: V, idx: PartId): LogicalParGraph[S, V, E] = g.updatePartition(v, idx)
 
       //TODO: Stop needing a parScheme object. Just a typeclass instance should do?
       override def point[V, E[_]: Edge](e: E[V]): LogicalParGraph[S, V, E] = LogicalParGraph[S, V, E](e)  
@@ -151,6 +168,7 @@ trait LogicalParGraphInstances {
       override def plusEdge[V, E[_] : Edge](g: LogicalParGraph[S, V, E], e: E[V]): LogicalParGraph[S, V, E] = {
 
         //TODO: Reason about the below in the presence of self-loops when you have a moment, suspect broken
+        //TODO: Work out how below is supposed to play nice with LDG?
         //Get the left hand vertex of Edge e
         val l = Edge[E].left(e)
         //Get the right hand vertex of Edge e
@@ -160,8 +178,14 @@ trait LogicalParGraphInstances {
         //Get the neighbourhood of r from g if it exists
         val rN = g.adj.get(r)
         //Get the partitions for vertices l & r
-        val (dScheme, lPart) = lN.fold(ParScheme[S].getPartition(g.scheme, l, g))(n => (g.scheme, n._1))
-        val (ddScheme, rPart) = rN.fold(ParScheme[S].getPartition(dScheme, r, g))(n => (dScheme, n._1))
+
+        //If a vertex arrives, it is partitioned normally.
+        //This code should really know as little as possible
+        //So ... when an edge arrves, we call partitionEdge, regardless of whether of not the vertices already exist?
+//        val (dScheme, lPart) = lN.fold(ParScheme[S].partitionForVertex(g.scheme, l, g))(n => (g.scheme, n._1))
+//        val (ddScheme, rPart) = rN.fold(ParScheme[S].partitionForVertex(dScheme, r, g))(n => (dScheme, n._1))
+
+        val (dScheme, (lPart, rPart)) = ParScheme[S].partitionForEdge(g.scheme, e, g)
         //Add r to the outgoing neighbours (l->r convention) of l either in an existing or empty neighbourhood
         val dAdj = lN.fold(g.adj + (l -> (lPart, Map.empty[V, PartId], Map(r -> rPart)))) { case (part, inN, outN) =>
           g.adj + (l -> (part, inN, outN + (r -> rPart)))
@@ -170,7 +194,7 @@ trait LogicalParGraphInstances {
         val ddAdj = rN.fold(dAdj + (r -> (rPart, Map(l -> lPart), Map.empty[V, PartId]))) { case (part, inN, outN) =>
           dAdj + (r -> (part, inN + (l -> lPart), outN))
         }
-        GCons[S, V, E](ddAdj, ddScheme)
+        GCons[S, V, E](ddAdj, dScheme)
       }
 
       override def minusEdge[V, E[_] : Edge](g: LogicalParGraph[S, V, E], e: E[V]): LogicalParGraph[S, V, E] = {
@@ -186,15 +210,7 @@ trait LogicalParGraphInstances {
       }
 
       override def plusVertex[V, E[_] : Edge](g: LogicalParGraph[S, V, E], v: V): LogicalParGraph[S, V, E] = {
-        val (parScheme, part) = ParScheme[S].getPartition(g.scheme, v, g)
-        //TODO: Work out why type inferencer gives up on us at this point?
-        g match {
-          case NullGraph(s) =>
-            GCons[S, V, E](Map(v -> (part, Map.empty[V, PartId], Map.empty[V, PartId])), parScheme)
-          case GCons(adj, scheme) =>
-            GCons[S, V, E](adj + (v -> adj.getOrElse(v,
-              (part, Map.empty[V, PartId], Map.empty[V, PartId]))), parScheme)
-        }
+        ParScheme[S].partitionForVertex(g.scheme, v, g, assign[V, E] _)
       }
 
       override def minusVertex[V, E[_] : Edge](g: LogicalParGraph[S, V, E], v: V): LogicalParGraph[S, V, E] = g match {
