@@ -50,12 +50,7 @@ object ParScheme {
 
   @inline def apply[S[_]: ParScheme]: ParScheme[S] = implicitly[ParScheme[S]]
 
-  /** wrapper type for partition ids */
-  case class PartId(id: Int)
 
-  implicit class PartIdOps(id: Int) {
-    def part = PartId(id)
-  }
 
 
   /** default partition index if a vertex does not belong to the domain of the getPartition function */

@@ -103,9 +103,9 @@ trait SimpleGraphInstances {
 
   import SimpleGraph._
 
-  implicit def simpleGraph: Graph[SimpleGraph] =
-    new SimpleGraphLike {
-
+  implicit def simpleGraph[V, E[_]](implicit eEv: Edge[E]): Graph[SimpleGraph, V, E] =
+    new SimpleGraphLike[V, E] {
+      override implicit def E: Edge[E] = eEv
     }
 
   implicit def simpleGraphMonoid[V, E[_] : Edge](implicit ev: Monoid[SimpleGraph.AdjacencyList[V]]): Monoid[SimpleGraph[V, E]] =
@@ -120,20 +120,23 @@ trait SimpleGraphInstances {
 
 
 }
-private[gdget] sealed trait SimpleGraphLike extends Graph[SimpleGraph] {
+private[gdget] sealed trait SimpleGraphLike[V, E[_]] extends Graph[SimpleGraph, V, E] {
 
   import SimpleGraph._
 
-  override def point[V, E[_]: Edge](e: E[V]): SimpleGraph[V, E] = SimpleGraph(e)
+
+  override implicit def E: Edge[E]
+
+  override def point(e: E[V]): SimpleGraph[V, E] = SimpleGraph(e)
 
   //TODO: Use pattern matching to check for NullGraph as a performance optimisation
   //TODO: Investigate Specialization?
   //TODO: Look at using Stream, Streaming or Seq to represent this - Iterator is mutable!
-  override def vertices[V, E[_] : Edge](g: SimpleGraph[V, E]): Iterator[V] = g.vertices
+  override def vertices(g: SimpleGraph[V, E]): Iterator[V] = g.vertices
 
-  override def edges[V, E[_] : Edge](g: SimpleGraph[V, E]): Iterator[E[V]] = g.edges
+  override def edges(g: SimpleGraph[V, E]): Iterator[E[V]] = g.edges
 
-  override def plusVertex[V, E[_] : Edge](g: SimpleGraph[V, E], v: V): SimpleGraph[V, E] = {
+  override def plusVertex(g: SimpleGraph[V, E], v: V): SimpleGraph[V, E] = {
     //TODO: Make Singleton Graph type
     g match {
       case NullGraph() => GCons(Map(v -> (Set.empty[V], Set.empty[V])))
@@ -141,7 +144,7 @@ private[gdget] sealed trait SimpleGraphLike extends Graph[SimpleGraph] {
     }
   }
 
-  override def minusVertex[V, E[_] : Edge](g: SimpleGraph[V, E], v: V): SimpleGraph[V, E] = {
+  override def minusVertex(g: SimpleGraph[V, E], v: V): SimpleGraph[V, E] = {
     g match {
       case NullGraph() => NullGraph[V, E]
       case GCons(adj) if g.size <= 1 => NullGraph[V, E]
@@ -149,7 +152,7 @@ private[gdget] sealed trait SimpleGraphLike extends Graph[SimpleGraph] {
     }
   }
 
-  override def plusEdge[V, E[_] : Edge](g: SimpleGraph[V, E], e: E[V]): SimpleGraph[V, E] = {
+  override def plusEdge(g: SimpleGraph[V, E], e: E[V]): SimpleGraph[V, E] = {
     //We add to edges._2 because convention for neighbourhood tuples is (inEdges, outEdges), whilst convention for Edge
     //  types is that the left-hand vertex is the source
     val dAdj = g.adj.get(Edge[E].left(e)).fold(g.adj + ( Edge[E].left(e) -> (Set.empty[V],Set(Edge[E].right(e))) )) { edges =>
@@ -164,7 +167,7 @@ private[gdget] sealed trait SimpleGraphLike extends Graph[SimpleGraph] {
     GCons(ddAdj)
   }
 
-  override def minusEdge[V, E[_] : Edge](g: SimpleGraph[V, E], e: E[V]): SimpleGraph[V, E] = {
+  override def minusEdge(g: SimpleGraph[V, E], e: E[V]): SimpleGraph[V, E] = {
     //This doesn't check both ends of an edge before removing, instead removing as they go. This is fine because removing an
     //  element from a collection where it does not exist returns the same collection.
     val dAdj = g.adj.get(Edge[E].left(e)).fold(g.adj) { edges =>
@@ -176,7 +179,7 @@ private[gdget] sealed trait SimpleGraphLike extends Graph[SimpleGraph] {
     GCons(ddAdj)
   }
 
-  override def neighbourhood[V, E[_] : Edge](g: SimpleGraph[V, E], v: V) = g.adj.get(v).map { case (in, out) =>
+  override def neighbourhood(g: SimpleGraph[V, E], v: V) = g.adj.get(v).map { case (in, out) =>
       val mapper = (acc: Map[V, Set[Unit]], elem: V) => acc + (elem -> Set(()))
       UNeighbourhood(v, in.foldLeft(Map.empty[V, Set[Unit]])(mapper), out.foldLeft(Map.empty[V, Set[Unit]])(mapper))
   }

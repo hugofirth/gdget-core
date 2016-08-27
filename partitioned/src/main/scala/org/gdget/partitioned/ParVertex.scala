@@ -15,19 +15,15 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-package org.gdget
+package org.gdget.partitioned
 
-/** Description of Class
+
+/** A simple typeclass for vertex types which ensures that they can return an PartId for the partition they belong to.
   *
   * @author hugofirth
   */
-package object partitioned {
+trait ParVertex[V] extends Any with Serializable {
 
-  /** wrapper type for partition ids */
-  case class PartId(id: Int)
-
-  implicit class PartIdOps(id: Int) {
-    def part = PartId(id)
-  }
+  def partition(v: V): PartId
 
 }

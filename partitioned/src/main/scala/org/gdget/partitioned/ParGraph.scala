@@ -18,7 +18,6 @@
 package org.gdget.partitioned
 
 import org.gdget.data.UNeighbourhood
-import org.gdget.partitioned.ParScheme.PartId
 import org.gdget.{Edge, Graph}
 
 import language.higherKinds
@@ -27,7 +26,10 @@ import scala.annotation.implicitNotFound
 
 /** Simple typeclass for vertex partitioned graphs */
 @implicitNotFound("No member of type class ParGraph found for type ${G}")
-trait ParGraph[G[_, _[_]]] extends Graph[G]{
+trait ParGraph[G[_, _[_]], V, E[_]] extends Graph[G, V, E[_]]{
+
+  /** Ensure that the type V has a ParVertex typeclass instance */
+  def V: ParVertex[V]
 
   /** The number of partitions in the ParGraph
     *
@@ -35,20 +37,20 @@ trait ParGraph[G[_, _[_]]] extends Graph[G]{
     * this would lead to an O(|V|) operation, which is daft. I'm not even going to use partitions.size as a default impl
     * in order to avoid te Gotcha.
     */
-  def numPartitions[V, E[_]: Edge](g: G[V, E]): Int
+  def numPartitions(g: G[V, E]): Int
 
   /** The partitions of a graph themselves, index accessible */
-  def partitions[V, E[_]: Edge](g: G[V, E]): Vector[G[V, E]]
+  def partitions(g: G[V, E]): Vector[G[V, E]]
 
   /** Returns the partition id associated with a specific vertex */
-  def partitionOf[V, E[_]: Edge](g: G[V, E], v: V): Option[PartId]
+  def partitionOf(g: G[V, E], v: V): Option[PartId]
 
   /** Moves a vertex from one partition to another */
-  def updatePartitionOf[V, E[_]: Edge](g: G[V, E], v: V, idx: PartId): G[V, E]
+  def updatePartitionOf(g: G[V, E], v: V, idx: PartId): G[V, E]
 }
 
 object ParGraph {
-  @inline def apply[G[_, _[_]]: ParGraph]: ParGraph[G] = implicitly[ParGraph[G]]
+  @inline def apply[G[_, _[_]]: ParGraph, V: ParVertex, E[_]: Edge]: ParGraph[G, V, E] = implicitly[ParGraph[G, V, E]]
 }
 
 
