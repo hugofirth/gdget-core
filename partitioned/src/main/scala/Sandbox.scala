@@ -32,28 +32,21 @@ import scala.concurrent._
 object Sandbox extends App {
 
   //TODO: Finish Partitioner implementation so that it can be passed to LogicalParGraph apply
-  val a = Map(
-    1 -> 1.part,
-    2 -> 1.part,
-    3 -> 1.part,
-    4 -> 2.part,
-    5 -> 2.part,
-    6 -> 2.part
-  )
+  val (v1, v2, v3, v4, v5, v6) = (1 -> 1.part, 2 -> 1.part, 3 -> 1.part, 4 -> 2.part, 5 -> 2.part, 6 -> 2.part)
 
   type UTuple[A] = (A, A)
 
-  val b: LogicalParGraph[Int, UTuple] = LogicalParGraph[Int, UTuple](
-    1 -> 4,
-    1 -> 5,
-    1 -> 6,
-    2 -> 1,
-    3 -> 2,
-    3 -> 1,
-    4 -> 3,
-    5 -> 2,
-    5 -> 6,
-    6 -> 3
+  val b: LogicalParGraph[(Int, PartId), UTuple] = LogicalParGraph[(Int, PartId), UTuple](
+    v1 -> v4,
+    v1 -> v5,
+    v1 -> v6,
+    v2 -> v1,
+    v3 -> v2,
+    v3 -> v1,
+    v4 -> v3,
+    v5 -> v2,
+    v5 -> v6,
+    v6 -> v3
   )
 
   import cats.syntax.traverse._
@@ -83,10 +76,10 @@ object Sandbox extends App {
   //TODO: What about a Queryable function which takes a Graph and a ParScheme. Perhaps also an implicit QueryBuilder
   //  which I could then use to prop up type inference?
 
-  def query: QueryIO[LogicalParGraph, Int, UTuple, Option[(Int, Int)]] = {
+  def query: QueryIO[LogicalParGraph, (Int, PartId), UTuple, Option[((Int,PartId), (Int, PartId))]] = {
     for {
-      v <- get[LogicalParGraph, Int, UTuple](1)
-      p <- v.traverse(traverseEdge[LogicalParGraph, Int, UTuple](_, (1, 4)))
+      v <- get[LogicalParGraph, (Int, PartId), UTuple](v1)
+      p <- v.traverse(traverseEdge[LogicalParGraph, (Int, PartId), UTuple](_, (v1, v4)))
     } yield p.flatten
   }
 

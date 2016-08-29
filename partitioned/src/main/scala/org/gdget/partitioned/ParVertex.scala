@@ -34,4 +34,7 @@ object ParVertex {
 
   //TODO: Move instances to std pacakge - this is just a quick fix
   //TODO: Make an instance for (?, PartId)
+  implicit def tupleParVertex[V] = new ParVertex[(V, PartId)] {
+    override def partition(v: (V, PartId)): Option[PartId] = Option(v._2)
+  }
 }
