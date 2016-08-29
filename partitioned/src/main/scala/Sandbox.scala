@@ -1,7 +1,6 @@
 import cats.data.WriterT
 import cats.functor.Bifunctor
 import org.gdget.partitioned._
-import org.gdget.partitioned.ParScheme._
 import org.gdget.data.query._
 import org.gdget.{Edge, Graph}
 import org.gdget.std.all._
@@ -32,6 +31,7 @@ import scala.concurrent._
   */
 object Sandbox extends App {
 
+  //TODO: Finish Partitioner implementation so that it can be passed to LogicalParGraph apply
   val a = Map(
     1 -> 1.part,
     2 -> 1.part,
@@ -42,10 +42,8 @@ object Sandbox extends App {
   )
 
   type UTuple[A] = (A, A)
-  type Scheme[A] = Map[A, PartId]
 
-  val b: LogicalParGraph[Map[?, PartId], Int, UTuple] = LogicalParGraph[Map[?, PartId], Int, UTuple](
-    a,
+  val b: LogicalParGraph[Int, UTuple] = LogicalParGraph[Int, UTuple](
     1 -> 4,
     1 -> 5,
     1 -> 6,
@@ -66,7 +64,6 @@ object Sandbox extends App {
   import LogicalParGraph._
 
   implicitly[Edge[UTuple]]
-  implicitly[ParScheme[Scheme]]
   implicitly[Monad[Either[String, ?]]]
   implicitly[Bifunctor[WriterT[Option, ?, ?]]]
 //  implicitly[Graph[LogicalParGraph[Map[?, PartId], ?, ?[_]]]]
@@ -86,14 +83,14 @@ object Sandbox extends App {
   //TODO: What about a Queryable function which takes a Graph and a ParScheme. Perhaps also an implicit QueryBuilder
   //  which I could then use to prop up type inference?
 
-  def query[S[_]: ParScheme]: QueryIO[LogicalParGraph[S, ?, ?[_]], Int, UTuple, Option[(Int, Int)]] = {
+  def query: QueryIO[LogicalParGraph, Int, UTuple, Option[(Int, Int)]] = {
     for {
-      v <- get[LogicalParGraph[S, ?, ?[_]], Int, UTuple](1)
-      p <- v.traverse(traverseEdge[LogicalParGraph[S, ?, ?[_]], Int, UTuple](_, (1, 4)))
+      v <- get[LogicalParGraph, Int, UTuple](1)
+      p <- v.traverse(traverseEdge[LogicalParGraph, Int, UTuple](_, (1, 4)))
     } yield p.flatten
   }
 
-  val result = query[Scheme].transK[Future].run(b)
+  val result = query.transK[Future].run(b)
   result.onSuccess {
     case Some(edge) => println(s"Result is: $edge")
     case None => println("The query returns nothing")

@@ -120,6 +120,7 @@ trait SimpleGraphInstances {
 
 
 }
+
 private[gdget] sealed trait SimpleGraphLike[V, E[_]] extends Graph[SimpleGraph, V, E] {
 
   import SimpleGraph._

@@ -24,6 +24,14 @@ package org.gdget.partitioned
   */
 trait ParVertex[V] extends Any with Serializable {
 
-  def partition(v: V): PartId
+  def partition(v: V): Option[PartId]
 
+}
+
+object ParVertex {
+
+  @inline def apply[V: ParVertex]: ParVertex[V] = implicitly[ParVertex[V]]
+
+  //TODO: Move instances to std pacakge - this is just a quick fix
+  //TODO: Make an instance for (?, PartId)
 }
