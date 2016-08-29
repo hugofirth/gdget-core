@@ -110,7 +110,6 @@ object LogicalParGraph extends LogicalParGraphInstances {
       def isEmpty = false
     }
 
-  //TODO: Can we now use a case object here because we don't need a scheme parameter?
   private[gdget] case object NullGraph extends LogicalParGraph[Nothing, Lambda[A => (A, A)]] {
 
     val size = 0
@@ -167,7 +166,6 @@ private[gdget] sealed trait LogicalParGraphLike[V, E[_]] extends ParGraph[Logica
   /** Moves a vertex from one partition to another */
   override def updatePartitionOf(g: LogicalParGraph[V, E], v: V, idx: PartId): LogicalParGraph[V, E] = g.updatePartition(v, idx)
 
-  //TODO: Stop needing a parScheme object. Just a typeclass instance should do?
   override def point(e: E[V]): LogicalParGraph[V, E] = LogicalParGraph[V, E](e)
 
   //TODO: Look at using Stream, Streaming or Seq to represent this - Iterator is mutable!
