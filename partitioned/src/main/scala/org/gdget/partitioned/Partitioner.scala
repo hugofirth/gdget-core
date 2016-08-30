@@ -18,16 +18,27 @@
 package org.gdget.partitioned
 
 import language.higherKinds
+import scala.annotation.tailrec
 
 /** Simple typeclass, implementations of which must take in an object (maybe a neighbourhood, vertex or edge) and return
   * a PartId
   *
   * @author hugofirth
   */
-trait Partitioner[A[_]] {
+trait Partitioner[A[_]] { self =>
 
   /** Partition input element B and returning its PartId and the new state of the Partitioner */
-  def partition[B](partitioner: A[B], input: B): (A, Option[PartId])
+  def partition[B](partitioner: A[B], input: B): (A[B], Option[PartId])
+
+  /** Given a stream of input elements B, produce a stream of B's and their associated  partition ids, if any
+    * TODO: Double check this is actually ok? My grasp of stream laziness is a little shaky
+    */
+  def partitionStream[B](partitioner: A[B], input: Stream[B]): Stream[(B, Option[PartId])] = input match {
+    case Stream.Empty => Stream.empty[(B, Option[PartId])]
+    case hd #:: tl =>
+      val (dPart, pId) = self.partition(partitioner, hd)
+      (hd, pId) #:: partitionStream(dPart, tl)
+  }
 
 }
 
@@ -38,7 +49,7 @@ object Partitioner {
   //TODO: Move these to std?
 
   implicit val mapPartitioner = new Partitioner[Map[?, PartId]] {
-    override def partition[B](partitioner: Map[B, PartId], input: B): (Map[?, PartId], Option[PartId]) =
+    override def partition[B](partitioner: Map[B, PartId], input: B): (Map[B, PartId], Option[PartId]) =
       (partitioner, partitioner.get(input))
   }
 

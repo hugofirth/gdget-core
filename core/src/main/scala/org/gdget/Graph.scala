@@ -103,6 +103,7 @@ trait Graph[G[_, _[_]], V, E[_]] extends Any with Serializable {
 
   def minusEdge(g: G[V, E], e: E[V]): G[V, E]
 
+  //TODO: Do we actually want vararg parameters here? Or are we better off taking a sequence.
   def plusEdges(g: G[V, E], es: E[V]*): G[V, E] = es.foldLeft(g)((graph, e) => plusEdge(graph, e))
 
   def minusEdges(g: G[V, E], es: E[V]*): G[V, E] = es.foldLeft(g)((graph, e) => minusEdge(graph, e))

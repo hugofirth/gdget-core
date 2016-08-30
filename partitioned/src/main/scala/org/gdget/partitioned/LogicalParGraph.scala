@@ -31,7 +31,7 @@ sealed trait LogicalParGraph[V, E[_]] { self =>
 
   private[gdget] implicit def E: Edge[E]
 
-  private[gdget] implicit def V: ParVertex[V]
+  private[gdget] implicit def V: Partitioned[V]
 
   def size: Int
   def order: Int
@@ -86,21 +86,13 @@ object LogicalParGraph extends LogicalParGraphInstances {
   /** Representation of an Directed Adjacency List where each entry is labelled with a partition (wrapped Int) */
   type AdjacencyList[V] = Map[V, (PartId, Map[V, PartId], Map[V, PartId])]
 
-  //TODO: Remove a lot of this boilerplate if possible?
-  def empty[V: ParVertex, E[_]: Edge]: LogicalParGraph[V, E] = NullGraph[V, E]
+  def empty[V: Partitioned, E[_]: Edge]: LogicalParGraph[V, E] = NullGraph[V, E]
 
-
-  def apply[V: ParVertex, E[_]: Edge](es: E[V]*) = {
-    //TODO: Pass in partitioner so that es traversible is actually partitioned
-    // Option 1, make NullGraph take a scheme so that all the code which takes a scheme from a g which may be a NullGraph actually works.
-    // Option 2, Remove the need for a scheme and move to the V: ParVertex setup where each vertex added has a partition
-    // Option 3 ... ? 
-    es.foldLeft(empty[V, E])((g, e) => Graph[LogicalParGraph, V, E].plusEdge(g, e))
-  }
+  def apply[V: Partitioned, E[_]: Edge](es: E[V]*) = ParGraph[LogicalParGraph, V, E].plusEdges(empty[V, E], es:_*)
 
   /** Non-empty "Constructor" type of LogicalParGraph */
   private[gdget] final case class GCons[V, E[_]](adj: AdjacencyList[V])
-                                                       (implicit val E: Edge[E], val V: ParVertex[V])
+                                                       (implicit val E: Edge[E], val V: Partitioned[V])
     extends LogicalParGraph[V, E] {
 
       lazy val size: Int = vertices.size
@@ -116,16 +108,16 @@ object LogicalParGraph extends LogicalParGraphInstances {
     val order = 0
     val numPartitions = 0
 
-    def apply[V: ParVertex, E[_]: Edge]: LogicalParGraph[V, E] = this.asInstanceOf[LogicalParGraph[V, E]]
+    def apply[V: Partitioned, E[_]: Edge]: LogicalParGraph[V, E] = this.asInstanceOf[LogicalParGraph[V, E]]
 
-    def unapply[V: ParVertex, E[_]: Edge](that: LogicalParGraph[V, E]): Boolean = that.isEmpty
+    def unapply[V: Partitioned, E[_]: Edge](that: LogicalParGraph[V, E]): Boolean = that.isEmpty
 
     def isEmpty = true
 
     override private[gdget] implicit def E: Edge[Lambda[A => (A, A)]] = Edge[Lambda[A => (A, A)]]
 
     //TODO: Check that it is ok form to declare typeclass instances inline like this?
-    override private[gdget] implicit def V: ParVertex[Nothing] = new ParVertex[Nothing] {
+    override private[gdget] implicit def V: Partitioned[Nothing] = new Partitioned[Nothing] {
       override def partition(v: Nothing) = None
     }
 
@@ -136,10 +128,10 @@ object LogicalParGraph extends LogicalParGraphInstances {
 //TODO: Investigate why common practice is for these to be sealed abstract classes?
 trait LogicalParGraphInstances {
 
-  implicit def logicalParGraph[V, E[_]](implicit eEv: Edge[E], vEv: ParVertex[V]): ParGraph[LogicalParGraph, V, E] =
+  implicit def logicalParGraph[V, E[_]](implicit eEv: Edge[E], vEv: Partitioned[V]): ParGraph[LogicalParGraph, V, E] =
     new LogicalParGraphLike[V, E] {
-      /** Ensure that the type V has a ParVertex typeclass instance */
-      override implicit def V: ParVertex[V] = vEv
+      /** Ensure that the type V has a Partitioned typeclass instance */
+      override implicit def V: Partitioned[V] = vEv
 
       override implicit def E: Edge[E] = eEv
     }
@@ -150,8 +142,8 @@ private[gdget] sealed trait LogicalParGraphLike[V, E[_]] extends ParGraph[Logica
 
   import LogicalParGraph._
 
-  /** Ensure that the type V has a ParVertex typeclass instance */
-  override implicit def V: ParVertex[V]
+  /** Ensure that the type V has a Partitioned typeclass instance */
+  override implicit def V: Partitioned[V]
 
   override implicit def E: Edge[E]
 
@@ -185,8 +177,8 @@ private[gdget] sealed trait LogicalParGraphLike[V, E[_]] extends ParGraph[Logica
     //Get the neighbourhood of r from g if it exists
     val rN = g.adj.get(r)
     //Get the partitions for vertices l & r
-    val lPart = ParVertex[V].partition(l).getOrElse(0.part)
-    val rPart = ParVertex[V].partition(r).getOrElse(0.part)
+    val lPart = Partitioned[V].partition(l).getOrElse(0.part)
+    val rPart = Partitioned[V].partition(r).getOrElse(0.part)
 
     //Add r to the outgoing neighbours (l->r convention) of l either in an existing or empty neighbourhood
     val dAdj = lN.fold(g.adj + (l -> (lPart, Map.empty[V, PartId], Map(r -> rPart)))) { case (part, inN, outN) =>
@@ -212,7 +204,7 @@ private[gdget] sealed trait LogicalParGraphLike[V, E[_]] extends ParGraph[Logica
   }
 
   override def plusVertex(g: LogicalParGraph[V, E], v: V): LogicalParGraph[V, E] = {
-    val vPart = ParVertex[V].partition(v).getOrElse(0.part)
+    val vPart = Partitioned[V].partition(v).getOrElse(0.part)
     g match {
       case NullGraph() => GCons[V, E](Map(v -> (vPart, Map.empty[V, PartId], Map.empty[V, PartId])))
       case GCons(adj) => GCons[V, E](adj + (v -> adj.getOrElse(v, (vPart, Map.empty[V, PartId], Map.empty[V, PartId]))))

@@ -24,11 +24,12 @@ import scala.annotation.implicitNotFound
 
 
 /** Simple typeclass for vertex partitioned graphs */
+//TODO: Break into one parent typeclass and two extensions, one for Vertex partitionings and one for Edge partitionings
 @implicitNotFound("No member of type class ParGraph found for type ${G}")
 trait ParGraph[G[_, _[_]], V, E[_]] extends Graph[G, V, E]{ self =>
 
-  /** Ensure that the type V has a ParVertex typeclass instance */
-  implicit def V: ParVertex[V]
+  /** Ensure that the type V has a Partitioned typeclass instance */
+  implicit def V: Partitioned[V]
 
   /** The number of partitions in the ParGraph
     *
@@ -42,7 +43,7 @@ trait ParGraph[G[_, _[_]], V, E[_]] extends Graph[G, V, E]{ self =>
   def partitions(g: G[V, E]): Vector[G[V, E]]
 
   /** Returns the partition id associated with a specific vertex */
-  def partitionOf(g: G[V, E], v: V): Option[PartId] = self.getVertex(g, v).flatMap(ParVertex[V].partition(_))
+  def partitionOf(g: G[V, E], v: V): Option[PartId] = self.getVertex(g, v).flatMap(Partitioned[V].partition(_))
 
   /** Moves a vertex from one partition to another */
   def updatePartitionOf(g: G[V, E], v: V, idx: PartId): G[V, E]
@@ -50,7 +51,7 @@ trait ParGraph[G[_, _[_]], V, E[_]] extends Graph[G, V, E]{ self =>
 
 object ParGraph {
   @inline def apply[G[_, _[_]], V, E[_]](implicit eEv: Edge[E],
-                                         vEv: ParVertex[V],
+                                         vEv: Partitioned[V],
                                          gEv: ParGraph[G, V, E]): ParGraph[G, V, E] = implicitly[ParGraph[G, V, E]]
 }
 
