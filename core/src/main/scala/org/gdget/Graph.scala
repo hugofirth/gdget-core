@@ -114,25 +114,5 @@ object Graph {
   @inline def apply[G[_, _[_]], V, E[_]](implicit gEv: Graph[G, V, E], eEv: Edge[E]): Graph[G, V, E] = implicitly[Graph[G, V, E]]
 
   //TODO: Investigate Machinist for cheaper (unboxed) typeclass ops
-//  implicit class GraphOps[G[_, _[_]], V, E[_]](val g: G[V, E]) extends AnyVal {
-//    def vertices(implicit gEv: Graph[G], eEv: Edge[E]) = gEv.vertices(g)
-//    def edges(implicit gEv: Graph[G], eEv: Edge[E]) = gEv.edges(g)
-//    def order(implicit gEv: Graph[G], eEv: Edge[E]) = gEv.order(g)
-//    def size(implicit gEv: Graph[G], eEv: Edge[E]) = gEv.size(g)
-//    def getVertex(v: V)(implicit gEv: Graph[G], eEv: Edge[E]): Option[V] = gEv.getVertex(g, v)
-//    def getEdge(e: E[V])(implicit gEv: Graph[G], eEv: Edge[E]): Option[E[V]] = gEv.getEdge[V, E](g, e)
-//    def neighbourhood(v: V)(implicit gEv: Graph[G], eEv: Edge[E]) = gEv.neighbourhood(g, v)
-//    def union(that: G[V, E])(implicit ev: Monoid[G[V, E]], gEv: Graph[G], eEv: Edge[E]) = gEv.union(g, that)
-//    def findVertex(f: (V) => Boolean)(implicit gEv: Graph[G], eEv: Edge[E]) = gEv.findVertex(g)(f)
-//    def findEdge(f: (E[V]) => Boolean)(implicit gEv: Graph[G], eEv: Edge[E]) = gEv.findEdge(g)(f)
-//    def plusVertex(v: V)(implicit gEv: Graph[G], eEv: Edge[E]) = gEv.plusVertex(g, v)
-//    def minusVertex(v: V)(implicit gEv: Graph[G], eEv: Edge[E]) = gEv.minusVertex(g, v)
-//    def plusVertices(v: V*)(implicit gEv: Graph[G], eEv: Edge[E]) = gEv.plusVertices(g, v: _*)
-//    def minusVertices(v: V*)(implicit gEv: Graph[G], eEv: Edge[E]) = gEv.minusVertices(g, v: _*)
-//    def plusEdge(e: E[V])(implicit gEv: Graph[G], eEv: Edge[E]) = gEv.plusEdge(g, e)
-//    def minusEdge(e: E[V])(implicit gEv: Graph[G], eEv: Edge[E]) = gEv.minusEdge(g, e)
-//    def plusEdges(e: E[V]*)(implicit gEv: Graph[G], eEv: Edge[E]) = gEv.plusEdges(g, e: _*)
-//    def minusEdges(e: E[V]*)(implicit gEv: Graph[G], eEv: Edge[E]) = gEv.minusEdges(g, e: _*)
-//  }
 }
 

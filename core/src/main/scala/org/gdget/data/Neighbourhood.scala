@@ -55,4 +55,4 @@ final case class LNeighbourhood[V, E[_, _], L](center: V, in: Map[V, Set[L]], ou
 
 
 final case class UNeighbourhood[V, E[_]](center: V, in: Map[V, Set[Unit]], out: Map[V, Set[Unit]])(implicit val E: Edge[E])
-  extends Neighbourhood[V, ({type λ[a, _] =  E[a]})#λ, Unit]
+  extends Neighbourhood[V, Lambda[(A, B) => E[A]], Unit]
