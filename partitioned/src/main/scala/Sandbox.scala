@@ -51,7 +51,7 @@ object Sandbox extends App {
 
   import cats.syntax.traverse._
   import cats._
-  import cats.std.all._
+  import cats.instances.all._
   import ExecutionContext.Implicits.global
 
   import LogicalParGraph._

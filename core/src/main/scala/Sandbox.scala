@@ -59,7 +59,7 @@ object Sandbox extends App {
   import SimpleGraph._
   import cats.syntax.traverse._
   import cats._
-  import cats.std.all._
+  import cats.instances.all._
   import ExecutionContext.Implicits.global
 
   //TODO: Use kleisli composition to avoid having to flatten at the end?
