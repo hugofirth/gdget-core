@@ -53,33 +53,22 @@ object Sandbox extends App {
   import cats._
   import cats.instances.all._
   import ExecutionContext.Implicits.global
-
   import LogicalParGraph._
 
-  implicitly[Edge[UTuple]]
-  implicitly[Monad[Either[String, ?]]]
-  implicitly[Bifunctor[WriterT[Option, ?, ?]]]
-//  implicitly[Graph[LogicalParGraph[Map[?, PartId], ?, ?[_]]]]
 
-//  def test[S[_]: ParScheme]: Graph[LogicalParGraph[S, ?, ?[_]]] = Graph[LogicalParGraph[S, ?, ?[_]]]
 
-//  implicit val gimp = test[Scheme]
 
-  //Todo - make op object which means you only have to declare types once.
-  //E.G. val op = QueryBuilder[G, V, E]
-  // op.get(1)
-  // op.traverseEdge(...)
-  // If we think op.blah is cumbersome, then how about ...?
 
   //TODO: Use kleisli composition to avoid having to flatten at the end?
 
   //TODO: What about a Queryable function which takes a Graph and a ParScheme. Perhaps also an implicit QueryBuilder
   //  which I could then use to prop up type inference?
 
-  def query: QueryIO[LogicalParGraph, (Int, PartId), UTuple, Option[((Int,PartId), (Int, PartId))]] = {
+  def query = {
+    val op = QueryBuilder[LogicalParGraph, (Int, PartId), UTuple]
     for {
-      v <- get[LogicalParGraph, (Int, PartId), UTuple](v1)
-      p <- v.traverse(traverseEdge[LogicalParGraph, (Int, PartId), UTuple](_, (v1, v4)))
+      v <- op.get(v1)
+      p <- v.traverse(op.traverseEdge(_, (v1, v4)))
     } yield p.flatten
   }
 

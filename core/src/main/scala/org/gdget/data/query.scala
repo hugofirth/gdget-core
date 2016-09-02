@@ -62,7 +62,7 @@ object query {
   object QueryOp {
 
     case class Get[G[_, _[_]], V, E[_]](vertex: V) extends QueryOp[G, V, E, Option[V]] {
-      override def defaultTransK[M[_] : Monad](implicit gEv: Graph[G, V, E], eEv: Edge[E]) = 
+      override def defaultTransK[M[_] : Monad](implicit gEv: Graph[G, V, E], eEv: Edge[E]) =
         op(g => Graph[G, V, E].getVertex(g, vertex))
     }
 
@@ -160,31 +160,38 @@ object query {
       def apply[A](fa: QueryOp[G, V, E, A]): Kleisli[M, G[V, E], A] = fa.defaultTransK[M]
     }
 
-  def get[G[_, _[_]], V, E[_]](vertex: V): QueryIO[G, V, E, Option[V]] =
-    liftF[QueryOp[G, V, E, ?], Option[V]](Get(vertex))
+  final class QueryBuilder[G[_, _[_]], V, E[_]] private () {
 
-  def where[G[_, _[_]], V, E[_], F[_]: FunctorFilter, A](result: F[A])(cond: A => Boolean): QueryIO[G, V, E, F[A]] =
-    liftF[QueryOp[G, V, E, ?], F[A]](Where(result, cond))
+    def get(vertex: V): QueryIO[G, V, E, Option[V]] =
+      liftF[QueryOp[G, V, E, ?], Option[V]](Get(vertex))
 
-  def getWhere[G[_, _[_]], V, E[_]](cond: V => Boolean): QueryIO[G, V, E, List[V]] =
-    liftF[QueryOp[G, V, E, ?], List[V]](GetWhere(cond))
+    def where[F[_] : FunctorFilter, A](result: F[A])(cond: A => Boolean): QueryIO[G, V, E, F[A]] =
+      liftF[QueryOp[G, V, E, ?], F[A]](Where(result, cond))
 
-  def traverseEdge[G[_, _[_]], V, E[_]](vertex: V, edge: E[V]): QueryIO[G, V, E, Option[E[V]]] =
-    liftF[QueryOp[G, V, E, ?], Option[E[V]]](TraverseEdge(vertex, edge))
+    def getWhere(cond: V => Boolean): QueryIO[G, V, E, List[V]] =
+      liftF[QueryOp[G, V, E, ?], List[V]](GetWhere(cond))
 
-  def traverseEdgesWhere[G[_, _[_]], V, E[_]](vertex: V, cond: E[V] => Boolean): QueryIO[G, V, E, List[E[V]]] =
-    liftF[QueryOp[G, V, E, ?], List[E[V]]](TraverseEdgesWhere(vertex, cond))
+    def traverseEdge(vertex: V, edge: E[V]): QueryIO[G, V, E, Option[E[V]]] =
+      liftF[QueryOp[G, V, E, ?], Option[E[V]]](TraverseEdge(vertex, edge))
 
-  def traverseNeighbour[G[_, _[_]], V, E[_]](vertex: V, n: V): QueryIO[G, V, E, Option[V]] =
-    liftF[QueryOp[G, V, E, ?], Option[V]](TraverseNeighbour(vertex, n))
+    def traverseEdgesWhere(vertex: V)(cond: E[V] => Boolean): QueryIO[G, V, E, List[E[V]]] =
+      liftF[QueryOp[G, V, E, ?], List[E[V]]](TraverseEdgesWhere(vertex, cond))
 
-  def traverseNeighboursWhere[G[_, _[_]], V, E[_]](vertex: V, cond: V => Boolean): QueryIO[G, V, E, List[V]] =
-    liftF[QueryOp[G, V, E, ?], List[V]](TraverseNeighboursWhere(vertex, cond))
+    def traverseNeighbour(vertex: V, n: V): QueryIO[G, V, E, Option[V]] =
+      liftF[QueryOp[G, V, E, ?], Option[V]](TraverseNeighbour(vertex, n))
 
-  def traverseInNeighbour[G[_, _[_]], V, E[_]](vertex: V, in: V): QueryIO[G, V, E, Option[V]] =
-    liftF[QueryOp[G, V, E, ?], Option[V]](TraverseInNeighbour(vertex, in))
+    def traverseNeighboursWhere(vertex: V)(cond: V => Boolean): QueryIO[G, V, E, List[V]] =
+      liftF[QueryOp[G, V, E, ?], List[V]](TraverseNeighboursWhere(vertex, cond))
 
-  def traverseOutNeighbour[G[_, _[_]], V, E[_]](vertex: V, out: V): QueryIO[G, V, E, Option[V]] =
-    liftF[QueryOp[G, V, E, ?], Option[V]](TraverseOutNeighbour(vertex, out))
+    def traverseInNeighbour(vertex: V, in: V): QueryIO[G, V, E, Option[V]] =
+      liftF[QueryOp[G, V, E, ?], Option[V]](TraverseInNeighbour(vertex, in))
 
+    def traverseOutNeighbour(vertex: V, out: V): QueryIO[G, V, E, Option[V]] =
+      liftF[QueryOp[G, V, E, ?], Option[V]](TraverseOutNeighbour(vertex, out))
+  }
+
+  object QueryBuilder {
+    def apply[G[_, _[_]], V, E[_]](implicit gEv: Graph[G, V, E], eEv: Edge[E]): QueryBuilder[G, V, E] =
+      new QueryBuilder[G, V, E]()
+  }
 }

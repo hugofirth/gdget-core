@@ -63,10 +63,11 @@ object Sandbox extends App {
   import ExecutionContext.Implicits.global
 
   //TODO: Use kleisli composition to avoid having to flatten at the end?
-  val query: QueryIO[SimpleGraph, Int, UTuple, Option[(Int, Int)]] = {
+  val query = {
+    val op = QueryBuilder[SimpleGraph, Int, UTuple]
     for {
-      v <- get[SimpleGraph, Int, UTuple](1)
-      p <- v.traverse(traverseEdge[SimpleGraph, Int, UTuple](_, (1, 4)))
+      v <- op.get(1)
+      p <- v.traverse(op.traverseEdge(_, (1, 4)))
     } yield p.flatten
   }
 
