@@ -163,7 +163,7 @@ object query {
   def get[G[_, _[_]], V, E[_]](vertex: V): QueryIO[G, V, E, Option[V]] =
     liftF[QueryOp[G, V, E, ?], Option[V]](Get(vertex))
 
-  def where[G[_, _[_]], V, E[_], F[_]: FunctorFilter, A](result: F[A], cond: A => Boolean): QueryIO[G, V, E, F[A]] =
+  def where[G[_, _[_]], V, E[_], F[_]: FunctorFilter, A](result: F[A])(cond: A => Boolean): QueryIO[G, V, E, F[A]] =
     liftF[QueryOp[G, V, E, ?], F[A]](Where(result, cond))
 
   def getWhere[G[_, _[_]], V, E[_]](cond: V => Boolean): QueryIO[G, V, E, List[V]] =
