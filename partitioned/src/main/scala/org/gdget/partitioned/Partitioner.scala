@@ -23,6 +23,9 @@ import scala.annotation.tailrec
 /** Simple typeclass, implementations of which must take in an object (maybe a neighbourhood, vertex or edge) and return
   * a PartId
   *
+  * TODO: Work out whether we want type B to be a type parameter of the typeclass or whether it is ok as a type parameter
+  * on the individual methods. Turn to Cats/Scalaz for inspiration.
+  *
   * @author hugofirth
   */
 trait Partitioner[A, B] { self =>
