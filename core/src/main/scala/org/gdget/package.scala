@@ -31,4 +31,10 @@ package object gdget {
   type HPair[+A] = (A, A)
 
   type Path[A] = Vector[A]
+
+  /** Edge Direction ADT, in the package object because its tiny */
+  sealed trait Direction
+  case object In extends Direction
+  case object Out extends Direction
+  case object Both extends Direction
 }

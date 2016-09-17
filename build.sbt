@@ -10,7 +10,7 @@ def GdgetProject(name: String): Project = (
       resolvers ++= Seq(Resolver.sonatypeRepo("releases")),
       libraryDependencies ++= Seq(
         "org.scalatest" %% "scalatest" % "3.0.0" % "test",
-        "org.typelevel" %% "cats" % "0.7.0"
+        "org.typelevel" %% "cats" % "0.7.2"
       ),
       addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.8.0"),
       addCompilerPlugin("com.milessabin" % "si2712fix-plugin" % "1.2.0" cross CrossVersion.full),

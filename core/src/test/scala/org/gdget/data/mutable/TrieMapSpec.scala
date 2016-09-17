@@ -17,6 +17,7 @@
   */
 package org.gdget.data.mutable
 
+import org.gdget.data.{MutableTrieMap, MutableTrieMultiMap}
 import org.gdget.util.UnitSpec
 
 import scala.collection.mutable
@@ -28,10 +29,10 @@ import scala.collection.mutable
   */
 class TrieMapSpec extends UnitSpec{
 
-  var trie = TrieMap.empty[Char, Int]
+  var trie = MutableTrieMap.empty[Char, Int]
 
   before {
-    trie = TrieMap[Char, Int]()
+    trie = MutableTrieMap[Char, Int]()
     trie += (("abd", 0))
     trie += (("acd", 1))
     trie += (("aca", 2))
@@ -41,7 +42,7 @@ class TrieMapSpec extends UnitSpec{
   //TODO Check behaviour of TrieMap iterator
 
   "An empty TrieMap" should "have size 0" in {
-    assert(TrieMap.empty[Char, Int].isEmpty)
+    assert(MutableTrieMap.empty[Char, Int].isEmpty)
   }
 
   "A TrieMap" should "be able to return all mappings for a given prefix" in {
@@ -79,10 +80,10 @@ class TrieMapSpec extends UnitSpec{
   */
 class TrieMultiMapSpec extends UnitSpec {
 
-  var trie = new TrieMap[Char, mutable.Set[Int]]() with TrieMultiMap[Char, Int]
+  var trie = new MutableTrieMap[Char, mutable.Set[Int]]() with MutableTrieMultiMap[Char, Int]
 
   before {
-    trie = new TrieMap[Char, mutable.Set[Int]]() with TrieMultiMap[Char, Int]
+    trie = new MutableTrieMap[Char, mutable.Set[Int]]() with MutableTrieMultiMap[Char, Int]
     trie addBinding("abd", 0)
     trie addBinding("abd", 1)
     trie addBinding("acd", 2)

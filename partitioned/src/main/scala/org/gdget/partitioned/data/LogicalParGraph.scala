@@ -15,13 +15,14 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-package org.gdget.partitioned
+package org.gdget.partitioned.data
 
+import org.gdget.Edge
 import org.gdget.data.UNeighbourhood
-import org.gdget.std._
-import org.gdget.{Edge, Graph}
+import org.gdget.partitioned._
 
-import language.higherKinds
+import scala.language.higherKinds
+import scala.collection.mutable
 
 /** A logically partitioned graph type. Each vertex is labelled with its partition. */
 sealed trait LogicalParGraph[V, E[_]] { self =>
@@ -84,11 +85,20 @@ sealed trait LogicalParGraph[V, E[_]] { self =>
 object LogicalParGraph extends LogicalParGraphInstances {
 
   /** Representation of an Directed Adjacency List where each entry is labelled with a partition (wrapped Int) */
-  type AdjacencyList[V] = Map[V, (PartId, Map[V, PartId], Map[V, PartId])]
+  type Entry[V] = (PartId, Map[V, PartId], Map[V, PartId])
+  type AdjacencyList[V] = Map[V, Entry[V]]
 
   def empty[V: Partitioned, E[_]: Edge]: LogicalParGraph[V, E] = NullGraph[V, E]
 
-  def apply[V: Partitioned, E[_]: Edge](es: E[V]*) = ParGraph[LogicalParGraph, V, E].plusEdges(empty[V, E], es:_*)
+  //TODO: This will perform horribly. Use an method private builder and merge with adj map
+  def apply[V: Partitioned, E[_]: Edge](es: E[V]*): LogicalParGraph[V, E] = ???
+  //ParGraph[LogicalParGraph, V, E].plusEdges(empty[V, E], es:_*)
+
+  //TODO: Make a private builder method which takes an AdjancencyList, or perhaps a Mutable Map. Refactor apply, union
+  // and possibly plusVertices & plusEdges to take advantage of this. Finally maybe also refactor it to InMemoryGraphCompanion
+  // and share it with SimpleGraph
+  private[gdget] def fromAdjList[V: Partitioned, E[_]: Edge](repr: AdjacencyList[V]): LogicalParGraph[V, E] =
+    if(repr.nonEmpty) GCons[V, E](repr) else empty[V, E]
 
   /** Non-empty "Constructor" type of LogicalParGraph */
   private[gdget] final case class GCons[V, E[_]](adj: AdjacencyList[V])

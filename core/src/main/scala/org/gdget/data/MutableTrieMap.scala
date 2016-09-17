@@ -15,7 +15,9 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-package org.gdget.data.mutable
+package org.gdget.data
+
+import org.gdget.data
 
 import scala.annotation.tailrec
 import scala.collection.generic.CanBuildFrom
@@ -52,12 +54,12 @@ import scala.collection.mutable
   * @author hugofirth
   * @since 0.1
   */
-class TrieMap[A, B] extends mutable.Map[Seq[A],B] with mutable.MapLike[Seq[A],B, TrieMap[A, B]] {
+class MutableTrieMap[A, B] extends mutable.Map[Seq[A],B] with mutable.MapLike[Seq[A],B, MutableTrieMap[A, B]] {
 
-  private var suffixes: Map[A, TrieMap[A, B]] = Map.empty
+  private var suffixes: Map[A, MutableTrieMap[A, B]] = Map.empty
   var value: Option[B] = None
 
-  final def withPrefix(prefix: Seq[A]): TrieMap[A, B] = {
+  final def withPrefix(prefix: Seq[A]): MutableTrieMap[A, B] = {
     if (prefix.isEmpty) {
       this
     } else {
@@ -105,32 +107,33 @@ class TrieMap[A, B] extends mutable.Map[Seq[A],B] with mutable.MapLike[Seq[A],B,
       } yield (symbol +: pattern, patterns))
   }
 
-  override def empty = new TrieMap[A, B]
+  override def empty = new MutableTrieMap[A, B]
 
 }
 
-object TrieMap {
+object MutableTrieMap {
 
-  def apply[A,B](mappings: (Seq[A],B)*): TrieMap[A,B] = {
-    val trie = new TrieMap[A,B]
+  def apply[A,B](mappings: (Seq[A],B)*): MutableTrieMap[A,B] = {
+    val trie = new MutableTrieMap[A,B]
     mappings foreach ( trie += _ )
     trie
   }
 
-  def empty[A, B] = new TrieMap[A, B]
+  def empty[A, B] = new MutableTrieMap[A, B]
 
-  def newBuilder[A, B]: mutable.Builder[(Seq[A],B), TrieMap[A, B]] =
-    new mutable.MapBuilder[Seq[A], B, TrieMap[A, B]](empty)
+  def newBuilder[A, B]: mutable.Builder[(Seq[A],B), MutableTrieMap[A, B]] =
+    new mutable.MapBuilder[Seq[A], B, MutableTrieMap[A, B]](empty)
 
-  implicit def canBuildFrom[A, B]: CanBuildFrom[TrieMap[_,_], (Seq[A], B), TrieMap[A, B]] = {
-    new CanBuildFrom[TrieMap[_,_], (Seq[A], B), TrieMap[A, B]] {
-      def apply(from: TrieMap[_,_]) = newBuilder[A, B]
+  //TODO: Check that this builder is correct.
+  implicit def canBuildFrom[A, B]: CanBuildFrom[MutableTrieMap[_,_], (Seq[A], B), MutableTrieMap[A, B]] = {
+    new CanBuildFrom[MutableTrieMap[_,_], (Seq[A], B), MutableTrieMap[A, B]] {
+      def apply(from: MutableTrieMap[_,_]) = newBuilder[A, B]
       def apply() = newBuilder[A, B]
     }
   }
 }
 
-/** A trait for mutable [[org.gdget.data.mutable.TrieMap]]s with multiple values assigned to a single prefix.
+/** A trait for mutable [[data.MutableTrieMap]]s with multiple values assigned to a single prefix.
   *
   *  This trait is typically used as a mixin. It turns TrieMaps which map `A` to `Set[B]` objects into multimaps that
   *  map `A` to `B` objects.
@@ -151,15 +154,16 @@ object TrieMap {
   * @author hugofirth
   * @since 0.1
   */
-trait TrieMultiMap[A, B] extends TrieMap[A, mutable.Set[B]] with mutable.MultiMap[Seq[A], B] {
+trait MutableTrieMultiMap[A, B] extends MutableTrieMap[A, mutable.Set[B]] with mutable.MultiMap[Seq[A], B] {
 
   override final def addBinding(key: Seq[A], valueMember: B): this.type = {
     recursiveAddBinding(this, key, valueMember)
     this
   }
 
+  //TODO: Make these private recursive methods members of add/Remove Binding
   @tailrec
-  private def recursiveAddBinding(trieMultiMap: TrieMap[A,mutable.Set[B]], key: Seq[A], valueMember: B): Unit = {
+  private def recursiveAddBinding(trieMultiMap: MutableTrieMap[A,mutable.Set[B]], key: Seq[A], valueMember: B): Unit = {
     trieMultiMap.value = trieMultiMap.value match {
       case Some(set) => Some(set += valueMember)
       case None => Some(mutable.Set(valueMember))
@@ -173,11 +177,11 @@ trait TrieMultiMap[A, B] extends TrieMap[A, mutable.Set[B]] with mutable.MultiMa
   }
 
   @tailrec
-  private def recursiveRemoveBinding(trieMultiMap: TrieMap[A,mutable.Set[B]], key: Seq[A], valueMember: B): Unit = {
+  private def recursiveRemoveBinding(trieMultiMap: MutableTrieMap[A,mutable.Set[B]], key: Seq[A], valueMember: B): Unit = {
     trieMultiMap.value map( _ remove valueMember )
     if(key.nonEmpty) recursiveRemoveBinding(trieMultiMap withPrefix (key take 1), key.tail, valueMember)
   }
 
-  override def empty =  new TrieMap[A, mutable.Set[B]] with TrieMultiMap[A, B]
+  override def empty =  new MutableTrieMap[A, mutable.Set[B]] with MutableTrieMultiMap[A, B]
 
 }

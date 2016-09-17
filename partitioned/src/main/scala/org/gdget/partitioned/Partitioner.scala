@@ -24,26 +24,26 @@ import language.higherKinds
   *
   * @author hugofirth
   */
-trait Partitioner[A[_]] { self =>
+trait Partitioner[A, B] { self =>
 
   /** Partition input element B and returning its PartId and the new state of the Partitioner */
-  def partition[B](partitioner: A[B], input: B): (A[B], Option[PartId])
+  def partition(partitioner: A, input: B): (A, Option[PartId])
 
 }
 
 object Partitioner {
-  @inline def apply[A[_]](implicit ev: Partitioner[A]): Partitioner[A] = implicitly[Partitioner[A]]
+  @inline def apply[A, B](implicit ev: Partitioner[A, B]): Partitioner[A, B] = implicitly[Partitioner[A, B]]
 
   /** A couple of default instances */
   //TODO: Move these to std?
 
-  implicit val mapPartitioner = new Partitioner[Map[?, PartId]] {
-    override def partition[B](partitioner: Map[B, PartId], input: B): (Map[B, PartId], Option[PartId]) =
+  implicit def mapPartitioner[B] = new Partitioner[Map[B, PartId], B] {
+    override def partition(partitioner: Map[B, PartId], input: B): (Map[B, PartId], Option[PartId]) =
       (partitioner, partitioner.get(input))
   }
 
-  implicit val partialFunPartitioner = new Partitioner[PartialFunction[?, PartId]] {
-    override def partition[B](partitioner: PartialFunction[B, PartId], input: B): (PartialFunction[B, PartId], Option[PartId]) =
+  implicit def partialFunPartitioner[B] = new Partitioner[PartialFunction[B, PartId], B] {
+    override def partition(partitioner: PartialFunction[B, PartId], input: B): (PartialFunction[B, PartId], Option[PartId]) =
       (partitioner, partitioner.lift(input))
   }
 }

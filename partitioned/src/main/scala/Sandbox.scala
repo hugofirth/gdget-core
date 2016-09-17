@@ -2,6 +2,7 @@ import cats.data.WriterT
 import cats.functor.Bifunctor
 import org.gdget.partitioned._
 import org.gdget.data.query._
+import org.gdget.partitioned.data.LogicalParGraph
 import org.gdget.{Edge, Graph}
 import org.gdget.std.all._
 
