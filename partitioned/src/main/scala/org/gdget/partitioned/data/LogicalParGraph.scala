@@ -90,20 +90,20 @@ object LogicalParGraph extends LogicalParGraphInstances {
 
   def empty[V: Partitioned, E[_]: Edge]: LogicalParGraph[V, E] = NullGraph[V, E]
 
-  //TODO: This will perform horribly. Use an method private builder and merge with adj map
-  def apply[V: Partitioned, E[_]: Edge](es: E[V]*): LogicalParGraph[V, E] = ???
-  //ParGraph[LogicalParGraph, V, E].plusEdges(empty[V, E], es:_*)
+  def apply[V: Partitioned, E[_]: Edge](es: E[V]*): LogicalParGraph[V, E] = fromAdjList((adjListBuilder ++= es).result())
 
-  //TODO: Make a private builder method which takes an AdjancencyList, or perhaps a Mutable Map. Refactor apply, union
+  //TODO: Make a private builder method which takes an AdjancencyList, or perhaps a Mutable Map. Refactor union
   // and possibly plusVertices & plusEdges to take advantage of this. Finally maybe also refactor it to InMemoryGraphCompanion
   // and share it with SimpleGraph
   private[gdget] def fromAdjList[V: Partitioned, E[_]: Edge](repr: AdjacencyList[V]): LogicalParGraph[V, E] =
     if(repr.nonEmpty) GCons[V, E](repr) else empty[V, E]
 
-  //TODO: Will do for now - but reexplore idea of InMemGraphCompanion, as well as Edge labels and no duping PartIds
-  private[gdget] final def adjListBuilder[V, E[_]: Edge] = new mutable.Builder[E[V], Map[V, Entry[V]]] {
+  //TODO: Will do for now - but re-explore idea of InMemGraphCompanion, as well as Edge labels and no duping PartIds
+  private[gdget] final def adjListBuilder[V: Partitioned, E[_]: Edge] = new mutable.Builder[E[V], Map[V, Entry[V]]] {
 
-    type EntryBuilder = (mutable.SetBuilder[V, Set[V]], mutable.SetBuilder[V, Set[V]])
+    type EntryBuilder = (PartId,
+      mutable.MapBuilder[V, PartId, Map[V, PartId]],
+      mutable.MapBuilder[V, PartId, Map[V, PartId]])
 
     val empty = mutable.HashMap.empty[V, EntryBuilder]
 
@@ -111,17 +111,25 @@ object LogicalParGraph extends LogicalParGraphInstances {
 
     override def +=(elem: E[V]): this.type = {
       val (left, right) = Edge[E].vertices(elem)
-      val lN = coll.getOrElse(left, (new mutable.SetBuilder[V, Set[V]](Set.empty[V]),
-        new mutable.SetBuilder[V, Set[V]](Set.empty[V])))
-      coll.update(left, (lN._1, lN._2 += right))
-      coll.update(right, (lN._1 += left, lN._2))
+      val lPart = Partitioned[V].partition(left).getOrElse(0.part)
+      val rPart = Partitioned[V].partition(right).getOrElse(0.part)
+      val lN = coll.getOrElse(left,
+        (lPart,
+          new mutable.MapBuilder[V, PartId, Map[V, PartId]](Map.empty[V, PartId]),
+          new mutable.MapBuilder[V, PartId, Map[V, PartId]](Map.empty[V, PartId])))
+      coll.update(left, (lN._1, lN._2, lN._3 += (right -> rPart)))
+      val rN = coll.getOrElse(right,
+        (rPart,
+          new mutable.MapBuilder[V, PartId, Map[V, PartId]](Map.empty[V, PartId]),
+          new mutable.MapBuilder[V, PartId, Map[V, PartId]](Map.empty[V, PartId])))
+      coll.update(right, (rN._1, rN._2 += (left -> lPart), rN._3))
       this
     }
 
     override def clear(): Unit = coll = empty
 
     // TODO: Work out if there is a performance benefit of using transform -> mapResult -> result vs mapValues -> toMap?
-    override def result(): Map[V, (Set[V], Set[V])] = coll.mapValues(e => (e._1.result(), e._2.result())).toMap
+    override def result(): Map[V, Entry[V]] = coll.mapValues(e => (e._1, e._2.result(), e._3.result())).toMap
 
     //TODO: Use HashMap builder like functionality for sizeHint etc...
   }
@@ -161,7 +169,6 @@ object LogicalParGraph extends LogicalParGraphInstances {
   }
 }
 
-//TODO: Investigate why common practice is for these to be sealed abstract classes?
 trait LogicalParGraphInstances {
 
   implicit def logicalParGraph[V, E[_]](implicit eEv: Edge[E], vEv: Partitioned[V]): ParGraph[LogicalParGraph, V, E] =
