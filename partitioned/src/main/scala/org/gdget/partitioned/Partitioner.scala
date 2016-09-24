@@ -24,10 +24,10 @@ import language.higherKinds
   *
   * @author hugofirth
   */
-trait Partitioner[A, B] { self =>
+trait Partitioner[A, -B] { self =>
 
   /** Partition input element B and returning its PartId and the new state of the Partitioner */
-  def partition(partitioner: A, input: B): (A, Option[PartId])
+  def partition[BB <: B](partitioner: A, input: BB): (A, Option[PartId])
 
 }
 
@@ -38,12 +38,12 @@ object Partitioner {
   //TODO: Move these to std?
 
   implicit def mapPartitioner[B] = new Partitioner[Map[B, PartId], B] {
-    override def partition(partitioner: Map[B, PartId], input: B): (Map[B, PartId], Option[PartId]) =
+    override def partition[BB <: B](partitioner: Map[B, PartId], input: BB): (Map[B, PartId], Option[PartId]) =
       (partitioner, partitioner.get(input))
   }
 
   implicit def partialFunPartitioner[B] = new Partitioner[PartialFunction[B, PartId], B] {
-    override def partition(partitioner: PartialFunction[B, PartId], input: B): (PartialFunction[B, PartId], Option[PartId]) =
+    override def partition[BB <: B](partitioner: PartialFunction[B, PartId], input: BB): (PartialFunction[B, PartId], Option[PartId]) =
       (partitioner, partitioner.lift(input))
   }
 }

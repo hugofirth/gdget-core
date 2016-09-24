@@ -17,6 +17,9 @@
   */
 package org.gdget.partitioned.data
 
+import cats._
+import cats.implicits._
+
 import org.gdget.Edge
 import org.gdget.data.UNeighbourhood
 import org.gdget.partitioned._
@@ -48,7 +51,7 @@ sealed trait LogicalParGraph[V, E[_]] { self =>
   def edges: Iterator[E[V]] = for {
     (v, neighbours) <- adj.toIterator
     (part, inN, outN) = neighbours
-    (in, nPart) <- inN
+    (in, _) <- inN
   } yield E.connect(in, v)
 
   /** Returns an iterator of sub adjancency lists */
@@ -60,32 +63,18 @@ sealed trait LogicalParGraph[V, E[_]] { self =>
   def partitionOf(v: V) = adj.get(v).map { case (part, inN, outN) => part }
 
   /** Method to "move" a vertex from one logical partition to another */
-  def updatePartition(v: V, idx: PartId) = {
-    //Utility method to update the partition of a neighbour
-    def updateNeighbourPartition(v: V, n: V, idx: PartId, adj: AdjacencyList[V]) = {
-      adj.get(v).fold(adj) { case (part, inN, outN) =>
-        val newIn = inN.get(n).fold(inN)(_ => inN.updated(n, idx))
-        val newOut = outN.get(n).fold(outN)(_ => outN.updated(n, idx))
-        adj.updated(v, (part, newIn, newOut))
-      }
-    }
-
-    adj.get(v) match {
+  def updatePartition(v: V, idx: PartId) = adj.get(v) match {
       case Some((part, inN, outN)) if part != idx =>
         //Update the adjacency list with the new partition index for v
-        val dAdj = adj.updated(v, (idx, inN, outN))
-        //Update the neighbourhoods for each neighbour of v in the adjacency list
-        val d2Adj = (inN ++ outN).foldLeft(dAdj)((acc, entry) => updateNeighbourPartition(entry._1, v, idx, acc))
-        GCons(d2Adj)
+        GCons(adj.updated(v, (idx, inN, outN)))
       case _ => self //If the vertex does not exist, or the new partition idx is the same as the old: do nothing.
     }
-  }
 }
 
 object LogicalParGraph extends LogicalParGraphInstances {
 
   /** Representation of an Directed Adjacency List where each entry is labelled with a partition (wrapped Int) */
-  type Entry[V] = (PartId, Map[V, PartId], Map[V, PartId])
+  type Entry[V] = (PartId, Map[V, Set[Unit]], Map[V, Set[Unit]])
   type AdjacencyList[V] = Map[V, Entry[V]]
 
   def empty[V: Partitioned, E[_]: Edge]: LogicalParGraph[V, E] = NullGraph[V, E]
@@ -102,8 +91,8 @@ object LogicalParGraph extends LogicalParGraphInstances {
   private[gdget] final def adjListBuilder[V: Partitioned, E[_]: Edge] = new mutable.Builder[E[V], Map[V, Entry[V]]] {
 
     type EntryBuilder = (PartId,
-      mutable.MapBuilder[V, PartId, Map[V, PartId]],
-      mutable.MapBuilder[V, PartId, Map[V, PartId]])
+      mutable.MapBuilder[V, Set[Unit], Map[V, Set[Unit]]],
+      mutable.MapBuilder[V, Set[Unit], Map[V, Set[Unit]]])
 
     val empty = mutable.HashMap.empty[V, EntryBuilder]
 
@@ -115,14 +104,14 @@ object LogicalParGraph extends LogicalParGraphInstances {
       val rPart = Partitioned[V].partition(right).getOrElse(0.part)
       val lN = coll.getOrElse(left,
         (lPart,
-          new mutable.MapBuilder[V, PartId, Map[V, PartId]](Map.empty[V, PartId]),
-          new mutable.MapBuilder[V, PartId, Map[V, PartId]](Map.empty[V, PartId])))
-      coll.update(left, (lN._1, lN._2, lN._3 += (right -> rPart)))
+          new mutable.MapBuilder[V, Set[Unit], Map[V, Set[Unit]]](Map.empty[V, Set[Unit]]),
+          new mutable.MapBuilder[V, Set[Unit], Map[V, Set[Unit]]](Map.empty[V, Set[Unit]])))
+      coll.update(left, (lN._1, lN._2, lN._3 += (right -> Set(()))))
       val rN = coll.getOrElse(right,
         (rPart,
-          new mutable.MapBuilder[V, PartId, Map[V, PartId]](Map.empty[V, PartId]),
-          new mutable.MapBuilder[V, PartId, Map[V, PartId]](Map.empty[V, PartId])))
-      coll.update(right, (rN._1, rN._2 += (left -> lPart), rN._3))
+          new mutable.MapBuilder[V, Set[Unit], Map[V, Set[Unit]]](Map.empty[V, Set[Unit]]),
+          new mutable.MapBuilder[V, Set[Unit], Map[V, Set[Unit]]](Map.empty[V, Set[Unit]])))
+      coll.update(right, (rN._1, rN._2 += (left -> Set(())), rN._3))
       this
     }
 
@@ -165,7 +154,8 @@ object LogicalParGraph extends LogicalParGraphInstances {
       override def partition(v: Nothing) = None
     }
 
-    private[gdget] val adj: AdjacencyList[Nothing] = Map.empty[Nothing, (PartId, Map[Nothing, PartId], Map[Nothing, PartId])]
+    private[gdget] val adj: AdjacencyList[Nothing] =
+      Map.empty[Nothing, (PartId, Map[Nothing, Set[Unit]], Map[Nothing, Set[Unit]])]
   }
 }
 
@@ -224,12 +214,12 @@ private[gdget] sealed trait LogicalParGraphLike[V, E[_]] extends ParGraph[Logica
     val rPart = Partitioned[V].partition(r).getOrElse(0.part)
 
     //Add r to the outgoing neighbours (l->r convention) of l either in an existing or empty neighbourhood
-    val dAdj = lN.fold(g.adj + (l -> (lPart, Map.empty[V, PartId], Map(r -> rPart)))) { case (part, inN, outN) =>
-      g.adj + (l -> (part, inN, outN + (r -> rPart)))
+    val dAdj = lN.fold(g.adj + (l -> (lPart, Map.empty[V, Set[Unit]], Map(r -> Set(()))))) { case (part, inN, outN) =>
+      g.adj + (l -> (part, inN, outN + (r -> Set(()))))
     }
     //Add l to the incoming neighbours (l->r convention) of r either in an existing or empty neighbourhood
-    val ddAdj = rN.fold(dAdj + (r -> (rPart, Map(l -> lPart), Map.empty[V, PartId]))) { case (part, inN, outN) =>
-      dAdj + (r -> (part, inN + (l -> lPart), outN))
+    val ddAdj = rN.fold(dAdj + (r -> (rPart, Map(l -> Set(())), Map.empty[V, Set[Unit]]))) { case (part, inN, outN) =>
+      dAdj + (r -> (part, inN + (l -> Set(())), outN))
     }
     GCons[V, E](ddAdj)
   }
@@ -249,8 +239,8 @@ private[gdget] sealed trait LogicalParGraphLike[V, E[_]] extends ParGraph[Logica
   override def plusVertex(g: LogicalParGraph[V, E], v: V): LogicalParGraph[V, E] = {
     val vPart = Partitioned[V].partition(v).getOrElse(0.part)
     g match {
-      case NullGraph() => GCons[V, E](Map(v -> (vPart, Map.empty[V, PartId], Map.empty[V, PartId])))
-      case GCons(adj) => GCons[V, E](adj + (v -> adj.getOrElse(v, (vPart, Map.empty[V, PartId], Map.empty[V, PartId]))))
+      case NullGraph() => GCons[V, E](Map(v -> (vPart, Map.empty[V, Set[Unit]], Map.empty[V, Set[Unit]])))
+      case GCons(adj) => GCons[V, E](adj + (v -> adj.getOrElse(v, (vPart, Map.empty[V, Set[Unit]], Map.empty[V, Set[Unit]]))))
     }
   }
 
@@ -265,9 +255,7 @@ private[gdget] sealed trait LogicalParGraphLike[V, E[_]] extends ParGraph[Logica
   }
 
   override def neighbourhood(g: LogicalParGraph[V, E], v: V): Option[UNeighbourhood[V, E]] = {
-    g.adj.get(v).map { case(part, inN, outN) =>
-      UNeighbourhood(v, inN.mapValues(id => Set(())), outN.mapValues(id => Set(())))
-    }
+    g.adj.get(v).map { case(part, inN, outN) => UNeighbourhood(v, inN, outN) }
   }
 
 }

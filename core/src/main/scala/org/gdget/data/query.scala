@@ -66,6 +66,12 @@ object query {
         op(g => Graph[G, V, E].getVertex(g, vertex))
     }
 
+    //TODO: Get rid of horrific unsafe casting nonsense here.
+    case class GetAll[G[_, _[_]], V, E[_], B](f: PartialFunction[V, B]) extends QueryOp[G, V, E, List[B]] {
+      override def defaultTransK[M[_] : Monad](implicit gEv: Graph[G, V, E], eEv: Edge[E]) =
+        op(g => Graph[G, V, E].vertices(g).collect(f).toList)
+    }
+
     //TODO: Move to iterator here. Eventually replace Iterator with something better
     case class GetWhere[G[_, _[_]], V, E[_]](cond: V => Boolean) extends QueryOp[G, V, E, List[V]] {
       override def defaultTransK[M[_] : Monad](implicit gEv: Graph[G, V, E], eEv: Edge[E]): Kleisli[M, G[V, E], List[V]] =
@@ -161,6 +167,9 @@ object query {
     }
 
   final class QueryBuilder[G[_, _[_]], V, E[_]] private () {
+
+    def getAll[B](f: PartialFunction[V, B]): QueryIO[G, V, E, List[B]] =
+      liftF[QueryOp[G, V, E, ?], List[B]](GetAll(f))
 
     def get(vertex: V): QueryIO[G, V, E, Option[V]] =
       liftF[QueryOp[G, V, E, ?], Option[V]](Get(vertex))
