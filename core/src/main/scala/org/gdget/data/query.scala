@@ -26,6 +26,8 @@ import cats.free.Free
 import cats.free.Free.liftF
 import org.gdget.{Edge, Graph}
 
+import scala.reflect.ClassTag
+
 /** ADT representing a basic grammar for read-only queries over graphs (i.e. collection types which provide `org.gdget.Graph`
   * instances), along with a `cats.free.Free` Monad for the ADT.
   *
@@ -66,10 +68,9 @@ object query {
         op(g => Graph[G, V, E].getVertex(g, vertex))
     }
 
-    //TODO: Get rid of horrific unsafe casting nonsense here.
-    case class GetAll[G[_, _[_]], V, E[_], B](f: PartialFunction[V, B]) extends QueryOp[G, V, E, List[B]] {
+    case class GetAll[G[_, _[_]], V, E[_], VV](f: PartialFunction[V, VV]) extends QueryOp[G, V, E, Stream[VV]] {
       override def defaultTransK[M[_] : Monad](implicit gEv: Graph[G, V, E], eEv: Edge[E]) =
-        op(g => Graph[G, V, E].vertices(g).collect(f).toList)
+        op(g => Graph[G, V, E].vertices(g).collect(f).toStream)
     }
 
     //TODO: Move to iterator here. Eventually replace Iterator with something better
@@ -115,6 +116,15 @@ object query {
         op { g =>
           val n = Graph[G, V, E].neighbourhood(g, vertex)
           n.fold(List.empty[V])(_.neighbours.filter(cond).toList)
+        }
+      }
+    }
+
+    case class TraverseAllNeighbours[G[_, _[_]], V, E[_], VV](vertex: V, f: PartialFunction[V, VV]) extends QueryOp[G, V, E, List[VV]] {
+      override def defaultTransK[M[_] : Monad](implicit gEv: Graph[G, V, E], eEv: Edge[E]): Kleisli[M, G[V, E], List[VV]] = {
+        op { g =>
+          val n = Graph[G, V, E].neighbourhood(g, vertex)
+          n.fold(List.empty[VV])(_.neighbours.collect(f).toList)
         }
       }
     }
@@ -168,17 +178,19 @@ object query {
 
   final class QueryBuilder[G[_, _[_]], V, E[_]] private () {
 
-    def getAll[B](f: PartialFunction[V, B]): QueryIO[G, V, E, List[B]] =
-      liftF[QueryOp[G, V, E, ?], List[B]](GetAll(f))
+    //TODO: Investigate any difference between collect and Filter here and do something like Pf.lift andThen _.nonEmpty
+    // to give us a V => Boolean we can use with existing Where Ops
+    def getAll[VV <: V](implicit ev: ClassTag[VV]): QueryIO[G, V, E, Stream[VV]] =
+      liftF[QueryOp[G, V, E, ?], Stream[VV]](GetAll({ case v: VV => v }))
 
     def get(vertex: V): QueryIO[G, V, E, Option[V]] =
       liftF[QueryOp[G, V, E, ?], Option[V]](Get(vertex))
 
-    def where[F[_] : FunctorFilter, A](result: F[A])(cond: A => Boolean): QueryIO[G, V, E, F[A]] =
-      liftF[QueryOp[G, V, E, ?], F[A]](Where(result, cond))
-
     def getWhere(cond: V => Boolean): QueryIO[G, V, E, List[V]] =
       liftF[QueryOp[G, V, E, ?], List[V]](GetWhere(cond))
+
+    def where[F[_] : FunctorFilter, A](result: F[A])(cond: A => Boolean): QueryIO[G, V, E, F[A]] =
+      liftF[QueryOp[G, V, E, ?], F[A]](Where(result, cond))
 
     def traverseEdge(vertex: V, edge: E[V]): QueryIO[G, V, E, Option[E[V]]] =
       liftF[QueryOp[G, V, E, ?], Option[E[V]]](TraverseEdge(vertex, edge))
@@ -188,6 +200,9 @@ object query {
 
     def traverseNeighbour(vertex: V, n: V): QueryIO[G, V, E, Option[V]] =
       liftF[QueryOp[G, V, E, ?], Option[V]](TraverseNeighbour(vertex, n))
+
+    def traverseAllNeighbours[VV <: V](vertex: V)(implicit ev: ClassTag[VV]): QueryIO[G, V, E, List[VV]] =
+      liftF[QueryOp[G,V, E, ?], List[VV]](TraverseAllNeighbours(vertex, { case v: VV => v }))
 
     def traverseNeighboursWhere(vertex: V)(cond: V => Boolean): QueryIO[G, V, E, List[V]] =
       liftF[QueryOp[G, V, E, ?], List[V]](TraverseNeighboursWhere(vertex, cond))
