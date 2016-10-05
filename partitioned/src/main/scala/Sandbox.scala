@@ -33,11 +33,12 @@ import scala.concurrent._
 object Sandbox extends App {
 
   //TODO: Finish Partitioner implementation so that it can be passed to LogicalParGraph apply
-  val (v1, v2, v3, v4, v5, v6) = (1 -> 1.part, 2 -> 1.part, 3 -> 1.part, 4 -> 2.part, 5 -> 2.part, 6 -> 2.part)
+  val (v1, v2, v3, v4, v5, v6) = (1 -> Some(1.part),
+    2 -> Some(1.part), 3 -> Some(1.part), 4 -> Some(2.part), 5 -> Some(2.part), 6 -> Some(2.part))
 
   type UTuple[A] = (A, A)
 
-  val b: LogicalParGraph[(Int, PartId), UTuple] = LogicalParGraph[(Int, PartId), UTuple](
+  val b: LogicalParGraph[(Int, Option[PartId]), UTuple] = LogicalParGraph[(Int, Option[PartId]), UTuple](
     v1 -> v4,
     v1 -> v5,
     v1 -> v6,
@@ -66,7 +67,7 @@ object Sandbox extends App {
   //  which I could then use to prop up type inference?
 
   def query = {
-    val op = QueryBuilder[LogicalParGraph, (Int, PartId), UTuple]
+    val op = QueryBuilder[LogicalParGraph, (Int, Option[PartId]), UTuple]
     for {
       v <- op.get(v1)
       p <- v.traverse(op.traverseEdge(_, (v1, v4)))

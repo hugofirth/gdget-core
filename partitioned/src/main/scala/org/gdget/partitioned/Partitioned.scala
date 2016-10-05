@@ -34,7 +34,7 @@ object Partitioned {
 
   //TODO: Use Discipline/Scalacheck/Scalatest (Discpline?) to create a simple law which checks for same eq/hashcode with different partitions
   //This would make the below a lawless instance! TODO: Remove below
-  implicit def tupleParVertex[V] = new Partitioned[(V, PartId)] {
-    override def partition(v: (V, PartId)): Option[PartId] = Option(v._2)
+  implicit def tupleParVertex[V] = new Partitioned[(V, Option[PartId])] {
+    override def partition(v: (V, Option[PartId])): Option[PartId] = v._2
   }
 }

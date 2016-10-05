@@ -135,7 +135,8 @@ object LogicalParGraph extends LogicalParGraphInstances {
       def isEmpty = false
     }
 
-  private[gdget] case object NullGraph extends LogicalParGraph[Nothing, Lambda[A => (A, A)]] {
+  private[gdget] case object NullGraph extends LogicalParGraph[(Nothing, Option[PartId]), Lambda[A => (A, A)]] {
+    //TODO: Change to (Nothing, PartId) as that has a meaningful Partitioned Instance. See if it works.
 
     val size = 0
     val order = 0
@@ -147,15 +148,14 @@ object LogicalParGraph extends LogicalParGraphInstances {
 
     def isEmpty = true
 
-    override private[gdget] implicit def E: Edge[Lambda[A => (A, A)]] = Edge[Lambda[A => (A, A)]]
+    override private[gdget] implicit def E = Edge[Lambda[A => (A, A)]]
 
     //TODO: Check that it is ok form to declare typeclass instances inline like this?
-    override private[gdget] implicit def V: Partitioned[Nothing] = new Partitioned[Nothing] {
-      override def partition(v: Nothing) = None
-    }
+    override private[gdget] implicit def V = Partitioned[(Nothing, Option[PartId])]
 
-    private[gdget] val adj: AdjacencyList[Nothing] =
-      Map.empty[Nothing, (PartId, Map[Nothing, Set[Unit]], Map[Nothing, Set[Unit]])]
+    private[gdget] val adj: AdjacencyList[(Nothing, Option[PartId])] =
+      Map.empty[(Nothing, Option[PartId]),
+        (PartId, Map[(Nothing, Option[PartId]), Set[Unit]], Map[(Nothing, Option[PartId]), Set[Unit]])]
   }
 }
 
