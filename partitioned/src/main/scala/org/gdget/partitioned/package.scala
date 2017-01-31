@@ -24,7 +24,7 @@ package org.gdget
 package object partitioned {
 
   /** wrapper type for partition ids */
-  case class PartId(id: Int)
+  case class PartId(id: Int) extends AnyVal
 
   implicit class PartIdOps(id: Int) {
     def part = PartId(id)

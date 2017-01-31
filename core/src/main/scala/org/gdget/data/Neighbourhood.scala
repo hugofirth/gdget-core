@@ -37,6 +37,8 @@ trait Neighbourhood[V, E[_, _], L] {
 
   def neighbours = in.keySet ++ out.keySet
 
+  def neighboursIterator = in.keysIterator ++ out.keysIterator
+
   //TODO: Fix below, by getting rid of the toSet calls.
 
   def inEdges = in.flatMap { case (v, l) => l.map(LEdge[E, L].connect(v, center, _)) }.toSet

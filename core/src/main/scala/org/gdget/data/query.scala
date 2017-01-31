@@ -21,7 +21,7 @@ package org.gdget.data
 import cats.data.Kleisli
 
 import language.higherKinds
-import cats.{FunctorFilter, Monad, RecursiveTailRecM, ~>}
+import cats.{FunctorFilter, Monad, ~>}
 import cats.free.Free
 import cats.free.Free.liftF
 import org.gdget.{Edge, Graph}
@@ -153,17 +153,16 @@ object query {
 
   /** Syntax enrichment for `QueryIO` */
   implicit class QueryIOOps[G[_, _[_]], V, E[_], A](fa: QueryIO[G, V, E, A])(implicit gEv: Graph[G, V, E], eEv: Edge[E]) {
-    def transK[M[_]: Monad : RecursiveTailRecM]: Kleisli[M, G[V, E], A] = transformK[M, G, V, E](interpretK).apply(fa)
+    def transK[M[_]: Monad]: Kleisli[M, G[V, E], A] = transformK[M, G, V, E](interpretK).apply(fa)
 
-    def transKWith[M[_]: Monad : RecursiveTailRecM](interp: QueryOp[G, V, E, ?] ~> Kleisli[M, G[V, E], ?]): Kleisli[M, G[V, E], A] =
+    def transKWith[M[_]: Monad](interp: QueryOp[G, V, E, ?] ~> Kleisli[M, G[V, E], ?]): Kleisli[M, G[V, E], A] =
       transformK[M, G, V, E](interp).apply(fa)
   }
 
   /** FoldMaps chosen interpreter over queries constructed from several QueryOp objects (QueryIO) */
   def transformK[M[_], G[_, _[_]], V, E[_]](interp: QueryOp[G, V, E, ?] ~> Kleisli[M, G[V, E], ?])
                                            (implicit gEv: Graph[G, V, E],
-                                            eEv: Edge[E], mEv: Monad[M],
-                                            rEv: RecursiveTailRecM[M]): QueryIO[G, V, E, ?] ~> Kleisli[M, G[V, E], ?] =
+                                            eEv: Edge[E], mEv: Monad[M]): QueryIO[G, V, E, ?] ~> Kleisli[M, G[V, E], ?] =
     new (QueryIO[G, V, E, ?] ~> Kleisli[M, G[V, E], ?]) {
       override def apply[A](fa: QueryIO[G, V, E, A]): Kleisli[M, G[V, E], A] = fa.foldMap(interp)
     }
